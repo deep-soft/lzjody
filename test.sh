@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 clean_exit () {
 	rm -f "$TF"

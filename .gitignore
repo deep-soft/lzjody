@@ -21,6 +21,7 @@ Config.in
 /foo
 /lzjody
 /lzjody.static
+/bpxfrm
 /debug.log
 /log.test.*
 /out.*

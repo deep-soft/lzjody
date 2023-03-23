@@ -53,7 +53,7 @@ lzjody.static: liblzjody.a lzjody_util.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(BUILD_CFLAGS) -o lzjody.static lzjody_util.o liblzjody.a
 
 lzjody: liblzjody.so lzjody_util.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(BUILD_CFLAGS) -llzjody -o lzjody lzjody_util.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(BUILD_CFLAGS) -o lzjody lzjody_util.o liblzjody.so
 
 liblzjody.so: lzjody.c byteplane_xfrm.c
 	$(CC) -c $(BUILD_CFLAGS) -fPIC $(CFLAGS) -o byteplane_xfrm_shared.o byteplane_xfrm.c
@@ -64,6 +64,10 @@ liblzjody.a: lzjody.c byteplane_xfrm.c
 	$(CC) -c $(BUILD_CFLAGS) $(CFLAGS) byteplane_xfrm.c
 	$(CC) -c $(BUILD_CFLAGS) $(CFLAGS) lzjody.c
 	$(AR) rcs liblzjody.a lzjody.o byteplane_xfrm.o
+
+stripped: lzjody lzjody.static bpxfrm
+	strip --strip-debug liblzjody.so
+	strip --strip-unneeded lzjody lzjody.static bpxfrm
 
 #manual:
 #	gzip -9 < lzjody.8 > lzjody.8.gz
