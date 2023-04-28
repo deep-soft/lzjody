@@ -73,7 +73,7 @@ static void *compress_thread(void *arg)
 
 int main(int argc, char **argv)
 {
-	static unsigned char blk[LZJODY_BSIZE];
+	static unsigned char blk[LZJODY_BSIZE + 4];
 	static unsigned char out[LZJODY_BSIZE + 4];
 	int i;
 	int length = 0;	/* Incoming data block length counter */
