@@ -8,10 +8,10 @@ AR=ar
 # Try these if the compiler complains or you need to debug
 CFLAGS=-O2 -g
 #CFLAGS=-Og -g3
-BUILD_CFLAGS = -std=gnu99 -I. -D_FILE_OFFSET_BITS=64 -fstrict-aliasing -pipe
-BUILD_CFLAGS += -Wall -Wextra -Wwrite-strings -Wcast-align -Wstrict-aliasing -pedantic -Wstrict-overflow -Wstrict-prototypes -Wpointer-arith -Wundef
-BUILD_CFLAGS += -Wshadow -Wfloat-equal -Wstrict-overflow=5 -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wunreachable-code -Wformat=2 -Winit-self
-#BUILD_CFLAGS += -Wconversion
+COMPILER_OPTIONS = -std=gnu99 -I. -D_FILE_OFFSET_BITS=64 -fstrict-aliasing -pipe
+COMPILER_OPTIONS += -Wall -Wextra -Wwrite-strings -Wcast-align -Wstrict-aliasing -pedantic -Wstrict-overflow -Wstrict-prototypes -Wpointer-arith -Wundef
+COMPILER_OPTIONS += -Wshadow -Wfloat-equal -Wstrict-overflow=5 -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wunreachable-code -Wformat=2 -Winit-self
+#COMPILER_OPTIONS += -Wconversion
 LDFLAGS=-L.
 LDLIBS=
 
@@ -28,11 +28,11 @@ sysconfdir=${prefix}/etc
 # Use POSIX threads if the user specifically requests it
 ifdef THREADED
 LDFLAGS += -lpthread
-BUILD_CFLAGS += -DTHREADED
+COMPILER_OPTIONS += -DTHREADED
 endif
 
 ifdef DEBUG
-BUILD_CFLAGS += -DDEBUG -g
+COMPILER_OPTIONS += -DDEBUG -g
 endif
 
 TARGETS = lzjody lzjody.static bpxfrm test
@@ -44,25 +44,27 @@ ifeq ($(OS), Windows_NT)
 	EXT = .exe
 endif
 
+COMPILER_OPTIONS += $(CFLAGS_EXTRA)
+
 all: $(TARGETS)
 
 bpxfrm: bpxfrm.o byteplane_xfrm.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(BUILD_CFLAGS) -o bpxfrm byteplane_xfrm.o bpxfrm.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o bpxfrm byteplane_xfrm.o bpxfrm.o
 
 lzjody.static: liblzjody.a lzjody_util.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(BUILD_CFLAGS) -o lzjody.static lzjody_util.o liblzjody.a
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o lzjody.static lzjody_util.o liblzjody.a
 
 lzjody: liblzjody.so lzjody_util.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(BUILD_CFLAGS) -o lzjody lzjody_util.o liblzjody.so
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o lzjody lzjody_util.o liblzjody.so
 
 liblzjody.so: lzjody.c byteplane_xfrm.c
-	$(CC) -c $(BUILD_CFLAGS) -fPIC $(CFLAGS) -o byteplane_xfrm_shared.o byteplane_xfrm.c
-	$(CC) -c $(BUILD_CFLAGS) -fPIC $(CFLAGS) -o lzjody_shared.o lzjody.c
+	$(CC) -c $(COMPILER_OPTIONS) -fPIC $(CFLAGS) -o byteplane_xfrm_shared.o byteplane_xfrm.c
+	$(CC) -c $(COMPILER_OPTIONS) -fPIC $(CFLAGS) -o lzjody_shared.o lzjody.c
 	$(CC) -shared -o liblzjody.so lzjody_shared.o byteplane_xfrm_shared.o
 
 liblzjody.a: lzjody.c byteplane_xfrm.c
-	$(CC) -c $(BUILD_CFLAGS) $(CFLAGS) byteplane_xfrm.c
-	$(CC) -c $(BUILD_CFLAGS) $(CFLAGS) lzjody.c
+	$(CC) -c $(COMPILER_OPTIONS) $(CFLAGS) byteplane_xfrm.c
+	$(CC) -c $(COMPILER_OPTIONS) $(CFLAGS) lzjody.c
 	$(AR) rcs liblzjody.a lzjody.o byteplane_xfrm.o
 
 stripped: lzjody lzjody.static bpxfrm
@@ -73,7 +75,7 @@ stripped: lzjody lzjody.static bpxfrm
 #	gzip -9 < lzjody.8 > lzjody.8.gz
 
 .c.o:
-	$(CC) -c $(BUILD_CFLAGS) $(CFLAGS) $<
+	$(CC) -c $(COMPILER_OPTIONS) $(CFLAGS) $<
 
 clean:
 	rm -f *.o *.a *~ .*un~ lzjody lzjody*.static$(EXT) bpxfrm$(EXT) *.so* debug.log *.?.gz log.test.* out.*

@@ -736,11 +736,9 @@ extern int lzjody_decompress(const unsigned char * const in,
 	unsigned char c;
 	const unsigned char *mem1;
 	unsigned char *mem2;
-	/* FIXME: volatile to prevent vectorization (-fno-tree-loop-vectorize)
-	 * Should probably find another way to prevent unaligned vector access */
 	union {
 		uint32_t *m32;
-		volatile uint16_t *m16;
+		uint16_t *m16;
 		uint8_t *m8;
 	} mem;
 	union {
