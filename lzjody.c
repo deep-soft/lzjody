@@ -80,12 +80,12 @@ struct lz_index_t {
 	uint16_t bytecnt[256];	/* How many offsets exist per byte */
 };
 
-static inline int lzjody_find_lz(struct comp_data_t * const restrict data,
+static int lzjody_find_lz(struct comp_data_t * const restrict data,
 		const struct lz_index_t * const restrict idx);
-static inline int lzjody_find_rle(struct comp_data_t * const restrict data);
-static inline int lzjody_find_seq32(struct comp_data_t * const restrict data);
-static inline int lzjody_find_seq16(struct comp_data_t * const restrict data);
-static inline int lzjody_find_seq8(struct comp_data_t * const restrict data);
+static int lzjody_find_rle(struct comp_data_t * const restrict data);
+static int lzjody_find_seq32(struct comp_data_t * const restrict data);
+static int lzjody_find_seq16(struct comp_data_t * const restrict data);
+static int lzjody_find_seq8(struct comp_data_t * const restrict data);
 
 static int compress_scan(struct comp_data_t * const restrict data,
 		const struct lz_index_t * const restrict idx)
@@ -314,7 +314,7 @@ static int lzjody_flush_literals(struct comp_data_t * const restrict data)
 }
 
 /* Find best LZ data match for current input position */
-static inline int lzjody_find_lz(struct comp_data_t * const restrict data,
+static int lzjody_find_lz(struct comp_data_t * const restrict data,
 		const struct lz_index_t * const restrict idx)
 {
 	unsigned int scan = 0;
@@ -493,7 +493,7 @@ err_remain_underflow:
 }
 
 /* Find best RLE data match for current input position */
-static inline int lzjody_find_rle(struct comp_data_t * const restrict data)
+static int lzjody_find_rle(struct comp_data_t * const restrict data)
 {
 	const unsigned char c = *(data->in + data->ipos);
 	unsigned int length = 0;
@@ -523,7 +523,7 @@ static inline int lzjody_find_rle(struct comp_data_t * const restrict data)
 }
 
 /* Find sequential 32-bit values for compression */
-static inline int lzjody_find_seq32(struct comp_data_t * const restrict data)
+static int lzjody_find_seq32(struct comp_data_t * const restrict data)
 {
 	uint32_t num32;
 	uint32_t *m32 = (uint32_t *)((uintptr_t)data->in + (uintptr_t)data->ipos);
@@ -563,7 +563,7 @@ static inline int lzjody_find_seq32(struct comp_data_t * const restrict data)
 }
 
 /* Find sequential 16-bit values for compression */
-static inline int lzjody_find_seq16(struct comp_data_t * const restrict data)
+static int lzjody_find_seq16(struct comp_data_t * const restrict data)
 {
 	uint16_t num16;
 	uint16_t *m16 = (uint16_t *)((uintptr_t)data->in + (uintptr_t)data->ipos);
@@ -601,7 +601,7 @@ static inline int lzjody_find_seq16(struct comp_data_t * const restrict data)
 }
 
 /* Find sequential 8-bit values for compression */
-static inline int lzjody_find_seq8(struct comp_data_t * const restrict data)
+static int lzjody_find_seq8(struct comp_data_t * const restrict data)
 {
 	uint8_t num8;
 	uint8_t *m8 = (uint8_t *)((uintptr_t)data->in + (uintptr_t)data->ipos);
