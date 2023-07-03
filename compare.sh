@@ -36,4 +36,4 @@ for X in './lzjody.static -c' 'gzip -9c' 'lzop -9c' 'xz -ec' 'bzip2 -9c'
 	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
 done
 
-echo -e "\nBest algorithm: $P$X with ratio of $(expr $SZ \* 100 / $FSZ)%"
+echo -e "\nBest algorithm: $BP with ratio of $(expr $BEST \* 100 / $FSZ)%"
