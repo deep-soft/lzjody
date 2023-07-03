@@ -15,7 +15,7 @@ FSZ="$(stat -c '%s' "$FILE")"
 
 echo -e "Source file: '$FILE'\n"
 printf "%${SPC1}s: %${SPC2}s\n" "Source file size" "$FSZ"
-for X in "./lzjody.static$EXT -c" 'gzip -9c' 'lzop -9c' 'xz -ec' 'bzip2 -9c' "lz4 -9c"
+for X in "./lzjody.static$EXT -c" "gzip -9c" "lzop -9c" "xz -ec" "bzip2 -9c"
 	do
 	P=""; printf "%${SPC1}s: " "$P$X"
 	SZ="$($X < $FILE | wc -c)"
