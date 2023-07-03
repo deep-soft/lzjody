@@ -48,6 +48,9 @@ COMPILER_OPTIONS += $(CFLAGS_EXTRA)
 
 all: $(TARGETS) bpxfrm diffxfrm
 
+xorxfrm: xorxfrm.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o xorxfrm xorxfrm.o
+
 diffxfrm: diffxfrm.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o diffxfrm diffxfrm.o
 

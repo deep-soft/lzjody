@@ -24,6 +24,7 @@ Config.in
 /lzjody.static
 /bpxfrm
 /diffxfrm
+/xorxfrm
 /debug.log
 /log.test.*
 /out.*

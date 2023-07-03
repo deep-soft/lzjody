@@ -10,6 +10,7 @@ SPC1=30; SPC2=10
 
 BEST=99999999999
 FSZ="$(stat -c '%s' "$FILE")"
+[ "$FSZ" = "0" ] && echo "Zero-length file" && exit 1
 
 echo -e "Source file: '$FILE'\n"
 printf "%${SPC1}s: %${SPC2}s\n" "Source file size" "$FSZ"
@@ -30,10 +31,35 @@ for X in './lzjody.static -c' 'gzip -9c' 'lzop -9c' 'xz -ec' 'bzip2 -9c'
 	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
 	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
 
+	P="xorxfrm => "; printf "%${SPC1}s: " "$P$X"
+	SZ="$(./xorxfrm -c < $FILE | $X | wc -c)"
+	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
+	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
+
 	P="bp+diff => "; printf "%${SPC1}s: " "$P$X"
 	SZ="$(./bpxfrm f $FILE - | ./diffxfrm -c - | $X | wc -c)"
 	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
 	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
+
+	P="bp+xor => "; printf "%${SPC1}s: " "$P$X"
+	SZ="$(./bpxfrm f $FILE - | ./xorxfrm -c - | $X | wc -c)"
+	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
+	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
+
+#	P="xor+bp => "; printf "%${SPC1}s: " "$P$X"
+#	SZ="$(./xorxfrm -c < $FILE | ./bpxfrm f - - | $X | wc -c)"
+#	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
+#	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
+
+#	P="bp+d+x => "; printf "%${SPC1}s: " "$P$X"
+#	SZ="$(./bpxfrm f $FILE - | ./diffxfrm -c | ./xorxfrm -c - | $X | wc -c)"
+#	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
+#	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
+
+#	P="bp+x+d => "; printf "%${SPC1}s: " "$P$X"
+#	SZ="$(./bpxfrm f $FILE - | ./xorxfrm -c | ./diffxfrm -c - | $X | wc -c)"
+#	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
+#	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
 done
 
 echo -e "\nBest algorithm: $BP with ratio of $(expr $BEST \* 100 / $FSZ)%"
