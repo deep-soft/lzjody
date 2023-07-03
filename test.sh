@@ -31,6 +31,7 @@ test $DFAIL -eq 1 && echo -e "\nDecompressor block test FAILED.\n" && clean_exit
 S1="$(sha1sum $IN | cut -d' ' -f1)"
 S2="$(sha1sum $OUT | cut -d' ' -f1)"
 test "$S1" != "$S2" && echo -e "\nCompressor/decompressor tests FAILED: mismatched hashes.\n" && clean_exit 1
+echo -e "\nCompress + decompress test PASSED"
 
 
 ### Decompressor tests
@@ -38,19 +39,19 @@ test "$S1" != "$S2" && echo -e "\nCompressor/decompressor tests FAILED: mismatch
 # Out-of-bounds length tests
 
 : > log.test.invalid
-echo -n "Testing invalid (large) lengths...";
+echo -n "Testing invalid (large) lengths ";
 echo "Large length test:" >> log.test.invalid
 echo -en '\x10\x05\xaf\xff' > $TF
 dd if=/dev/zero bs=4095 count=1 2>/dev/null >> $TF
 $LZJODY -d < $TF 2>> log.test.invalid && echo "FAILED" && clean_exit 1
-echo "passed"
+echo "PASSED"
 
-echo -n "Testing invalid (zero) lengths...";
+echo -n "Testing invalid (zero) lengths ";
 echo "Zero length test:" >> log.test.invalid
 echo -en '\x00\x00\x00' | \
 $LZJODY -d 2>> log.test.invalid && echo "FAILED" && clean_exit 1
-echo "passed"
+echo "PASSED"
 
 ### All tests passed!
-echo -e "\nCompressor/decompressor tests PASSED.\n"
+echo -e "\nAll compressor/decompressor tests PASSED.\n"
 clean_exit
