@@ -48,10 +48,19 @@ int main(int argc, char **argv)
 			goto usage;
 			break;
 	}
-	in = fopen(argv[2], "rb");
-	if (!in) goto error_open_input;
-	out = fopen(argv[3], "wb");
-	if (!out) goto error_open_output;
+
+	if (strcmp(argv[2], "-") == 0) {
+		in = stdin;
+	} else {
+		in = fopen(argv[2], "rb");
+		if (!in) goto error_open_input;
+	}
+	if (strcmp(argv[3], "-") == 0) {
+		out = stdout;
+	} else {
+		out = fopen(argv[3], "wb");
+		if (!out) goto error_open_output;
+	}
 
 	while ((length = fread(blk, 1, BSIZE, in))) {
 		if (ferror(in)) goto error_read;

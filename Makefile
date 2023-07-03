@@ -46,7 +46,7 @@ endif
 
 COMPILER_OPTIONS += $(CFLAGS_EXTRA)
 
-all: $(TARGETS)
+all: $(TARGETS) bpxfrm differential
 
 differential: differential.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o differential differential.o
