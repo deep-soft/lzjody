@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 		i = fwrite(xfrm, length, 1, out);
 		if (!i) goto error_write;
 	}
-	fprintf(stderr, "Success: %dx%d transformed %ld bytes\n", BYTEPLANES, BSIZE, total);
+//	fprintf(stderr, "Success: %dx%d transformed %ld bytes\n", BYTEPLANES, BSIZE, total);
 	exit(EXIT_SUCCESS);
 
 error_open_input:
