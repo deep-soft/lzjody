@@ -311,8 +311,14 @@ oom:
 	exit(EXIT_FAILURE);
 #endif
 usage:
-	fprintf(stderr, "lzjody %s, a compression utility by Jody Bruchon (%s)\n",
-			LZJODY_UTIL_VER, LZJODY_UTIL_VERDATE);
+	fprintf(stderr, "lzjody %s, a compression utility by Jody Bruchon (%s)%s\n",
+			LZJODY_UTIL_VER, LZJODY_UTIL_VERDATE,
+#ifdef THREADED
+			" threading enabled"
+#else
+			""
+#endif
+			);
 	fprintf(stderr, "\nlzjody -c   compress stdin to stdout\n");
 	fprintf(stderr, "\nlzjody -d   decompress stdin to stdout\n");
 	exit(EXIT_FAILURE);

@@ -1,0 +1,9 @@
+lzjody 0.2 (2023-07-03)
+
+- Threaded mode added (build with 'make THREADED=1')
+- Byte plane transformation binary added (bpxfrm)
+- Experimental differential transform program added
+
+lzjody 0.1 (2014-12-29)
+
+- Initial release

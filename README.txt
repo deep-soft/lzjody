@@ -29,20 +29,20 @@ Compression methods used by this program include:
   performed on otherwise incompressible data to see if it can be arranged
   differently to produce a compressible pattern.
 
-The included compression utility can use POSIX threads. If you want to try
-this out (WARNING: 2015-09-01: currently does not work properly) type:
+The included compression utility can use POSIX threads; to use threaded mode,
+build like this:
 
 make THREADED=1
 
 You can also use DEBUG=1 to turn on some very annoying debugging messages.
 
-The LZJODY library accepts blocks for compression up to 4096 bytes in size and
+The lzjody library accepts blocks for compression up to 4096 bytes in size and
 is designed to guarantee no more than four bytes of data expansion for a
 block that is 100% incompressible. The compress/decompress functions return
 the number of bytes that are output by the function. This return value can
 be examined by the calling application and used to determine if it will be
 better to store the data uncompressed with an "out-of-band" indicator that
-the block is stored raw instead of in the LZJODY compressed format.
+the block is stored raw instead of in the lzjody compressed format.
 
 
 KNOWN BUGS AND QUIRKS
@@ -122,7 +122,7 @@ INCREMENTAL SEQUENCE COMPRESSION
 --------------------------------
 
 Incremental sequences are runs of values that increase by 1 for every
-successive value. LZJODY scans for sequences of 8, 16, and 32 bit widths and
+successive value. lzjody scans for sequences of 8, 16, and 32 bit widths and
 reduces them to (start,count) pairs. For example, Seq(16) compression on the
 following 8-byte data stream:
 
