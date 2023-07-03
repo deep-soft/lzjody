@@ -46,10 +46,10 @@ endif
 
 COMPILER_OPTIONS += $(CFLAGS_EXTRA)
 
-all: $(TARGETS) bpxfrm differential
+all: $(TARGETS) bpxfrm diffxfrm
 
-differential: differential.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o differential differential.o
+diffxfrm: diffxfrm.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o diffxfrm diffxfrm.o
 
 bpxfrm: bpxfrm.o byteplane_xfrm.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o bpxfrm byteplane_xfrm.o bpxfrm.o
@@ -81,7 +81,7 @@ stripped: lzjody lzjody.static bpxfrm
 	$(CC) -c $(COMPILER_OPTIONS) $(CFLAGS) $<
 
 clean:
-	rm -f *.o *.a *~ .*un~ lzjody lzjody*.static$(EXT) bpxfrm$(EXT) differential$(EXT) *.so* debug.log *.?.gz log.test.* out.*
+	rm -f *.o *.a *~ .*un~ lzjody lzjody*.static$(EXT) bpxfrm$(EXT) diffxfrm$(EXT) *.so* debug.log *.?.gz log.test.* out.*
 
 distclean: clean
 	rm -f *.pkg.tar.*
@@ -93,6 +93,7 @@ install: all
 	install -D -o root -g root -m 0644 lzjody.h $(includedir)/lzjody.h
 #	install -D -o root -g root -m 0644 lzjody.8.gz $(mandir)/man8/lzjody.8.gz
 	install -D -o root -g root -m 0755 bpxfrm $(bindir)/bpxfrm
+	install -D -o root -g root -m 0755 diffxfrm $(bindir)/diffxfrm
 
 test: lzjody.static
 	./test.sh
