@@ -48,6 +48,9 @@ COMPILER_OPTIONS += $(CFLAGS_EXTRA)
 
 all: $(TARGETS)
 
+differential: differential.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o differential differential.o
+
 bpxfrm: bpxfrm.o byteplane_xfrm.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o bpxfrm byteplane_xfrm.o bpxfrm.o
 
@@ -78,10 +81,10 @@ stripped: lzjody lzjody.static bpxfrm
 	$(CC) -c $(COMPILER_OPTIONS) $(CFLAGS) $<
 
 clean:
-	rm -f *.o *.a *~ .*un~ lzjody lzjody*.static$(EXT) bpxfrm$(EXT) *.so* debug.log *.?.gz log.test.* out.*
+	rm -f *.o *.a *~ .*un~ lzjody lzjody*.static$(EXT) bpxfrm$(EXT) differential$(EXT) *.so* debug.log *.?.gz log.test.* out.*
 
-distclean:
-	rm -f *.o *.a *~ .*un~ lzjody lzjody*.static$(EXT) bpxfrm$(EXT) *.so* debug.log *.?.gz log.test.* out.* *.pkg.tar.*
+distclean: clean
+	rm -f *.pkg.tar.*
 
 install: all
 	install -D -o root -g root -m 0755 lzjody $(bindir)/lzjody

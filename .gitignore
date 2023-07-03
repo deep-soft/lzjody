@@ -23,6 +23,7 @@ Config.in
 /lzjody
 /lzjody.static
 /bpxfrm
+/differential
 /debug.log
 /log.test.*
 /out.*
