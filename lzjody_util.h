@@ -36,7 +36,7 @@ struct files_t {
 #ifdef THREADED
 /* Per-thread working state */
 struct thread_info {
-	unsigned char blk[LZJODY_BSIZE * CHUNK];	/* Thread input blocks */
+	unsigned char blk[LZJODY_BSIZE + 4 * CHUNK];	/* Thread input blocks */
 	unsigned char out[(LZJODY_BSIZE + 4) * CHUNK];	/* Thread output blocks */
 	char options;	/* Compressor options */
 	pthread_t id;	/* Thread ID */
