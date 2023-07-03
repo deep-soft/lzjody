@@ -35,7 +35,7 @@ ifdef DEBUG
 COMPILER_OPTIONS += -DDEBUG -g
 endif
 
-TARGETS = lzjody lzjody.static bpxfrm test
+TARGETS = lzjody lzjody.static bpxfrm diffxfrm xorxfrm test
 
 # On MinGW (Windows) only build static versions
 ifeq ($(OS), Windows_NT)
@@ -46,22 +46,22 @@ endif
 
 COMPILER_OPTIONS += $(CFLAGS_EXTRA)
 
-all: $(TARGETS) bpxfrm diffxfrm
+all: $(TARGETS)
 
 xorxfrm: xorxfrm.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o xorxfrm xorxfrm.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o xorxfrm$(EXT) xorxfrm.o
 
 diffxfrm: diffxfrm.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o diffxfrm diffxfrm.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o diffxfrm$(EXT) diffxfrm.o
 
 bpxfrm: bpxfrm.o byteplane_xfrm.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o bpxfrm byteplane_xfrm.o bpxfrm.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o bpxfrm$(EXT) byteplane_xfrm.o bpxfrm.o
 
 lzjody.static: liblzjody.a lzjody_util.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o lzjody.static lzjody_util.o liblzjody.a
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o lzjody.static$(EXT) lzjody_util.o liblzjody.a
 
 lzjody: liblzjody.so lzjody_util.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o lzjody lzjody_util.o liblzjody.so
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(COMPILER_OPTIONS) -o lzjody$(EXT) lzjody_util.o liblzjody.so
 
 liblzjody.so: lzjody.c byteplane_xfrm.c
 	$(CC) -c $(COMPILER_OPTIONS) -fPIC $(CFLAGS) -o byteplane_xfrm_shared.o byteplane_xfrm.c
@@ -75,7 +75,7 @@ liblzjody.a: lzjody.c byteplane_xfrm.c
 
 stripped: lzjody lzjody.static bpxfrm
 	strip --strip-debug liblzjody.so
-	strip --strip-unneeded lzjody lzjody.static bpxfrm
+	strip --strip-unneeded lzjody$(EXT) lzjody.static$(EXT) bpxfrm$(EXT)
 
 #manual:
 #	gzip -9 < lzjody.8 > lzjody.8.gz
@@ -84,7 +84,8 @@ stripped: lzjody lzjody.static bpxfrm
 	$(CC) -c $(COMPILER_OPTIONS) $(CFLAGS) $<
 
 clean:
-	rm -f *.o *.a *~ .*un~ lzjody lzjody*.static$(EXT) bpxfrm$(EXT) diffxfrm$(EXT) *.so* debug.log *.?.gz log.test.* out.*
+	rm -f *.o *.a *~ .*un~ *.so* debug.log *.?.gz log.test.* out.*
+	rm -f lzjody*.static$(EXT) bpxfrm$(EXT) diffxfrm$(EXT) xorxfrm$(EXT)
 
 distclean: clean
 	rm -f *.pkg.tar.*
@@ -97,6 +98,7 @@ install: all
 #	install -D -o root -g root -m 0644 lzjody.8.gz $(mandir)/man8/lzjody.8.gz
 	install -D -o root -g root -m 0755 bpxfrm $(bindir)/bpxfrm
 	install -D -o root -g root -m 0755 diffxfrm $(bindir)/diffxfrm
+	install -D -o root -g root -m 0755 diffxfrm $(bindir)/xorxfrm
 
 test: lzjody.static
 	./test.sh

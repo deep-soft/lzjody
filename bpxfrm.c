@@ -5,9 +5,10 @@
  * Released under The MIT License
  */
 
+#include <errno.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -62,13 +63,14 @@ int main(int argc, char **argv)
 		if (!out) goto error_open_output;
 	}
 
+	errno = 0;
 	while ((length = fread(blk, 1, BSIZE, in))) {
-		if (ferror(in)) goto error_read;
+		if (ferror(in) != 0) goto error_read;
 		total += length;
 		i = byteplane_transform(blk, xfrm, length, d);
 		if (i != 0) goto error_xfrm;
-		i = fwrite(xfrm, length, 1, out);
-		if (!i) goto error_write;
+		i = fwrite(xfrm, 1, length, out);
+		if (ferror(out) != 0 || i != length) goto error_write;
 	}
 //	fprintf(stderr, "Success: %dx%d transformed %ld bytes\n", BYTEPLANES, BSIZE, total);
 	exit(EXIT_SUCCESS);
@@ -83,7 +85,7 @@ error_read:
 	fprintf(stderr, "Error reading input file\n");
 	exit(EXIT_FAILURE);
 error_write:
-	fprintf(stderr, "Error writing output file (%d of %d written)\n", i, length);
+	fprintf(stderr, "Error writing output file (%d of %d written): [%d] %s\n", i, length, errno, strerror(errno));
 	exit(EXIT_FAILURE);
 error_xfrm:
 	fprintf(stderr, "Error: byte plane transform returned failure\n");

@@ -2,6 +2,8 @@
    Copyright (C) 2023 by Jody Bruchon <jody@jodybruchon.com>
    Released under The MIT License */
 
+
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -56,18 +58,20 @@ int main(int argc, char **argv)
 			goto usage;
 	}
 	while (1) {
-		int bytes;
+		int bytes, i;
+
+		errno = 0;
 		bytes = fread((char *)src, 1, CHUNK_SIZE, in);
 		if (ferror(in) != 0) {
-			fprintf(stderr, "error reading data\n");
+			fprintf(stderr, "error reading data [%d] %s\n", errno, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 		if (bytes > 0) {
 			if (mode == 0) differential_enc8((char *)src, (char *)dest, bytes);
 			else differential_dec8((char *)src, (char *)dest, bytes);
-			fwrite(dest, 1, bytes, out);
-			if (ferror(out) != 0) {
-				fprintf(stderr, "error writing data\n");
+			i = fwrite(dest, 1, bytes, out);
+			if (ferror(out) != 0 || i != bytes) {
+				fprintf(stderr, "error writing data [%d] %s\n", errno, strerror(errno));
 				exit(EXIT_FAILURE);
 			}
 		}

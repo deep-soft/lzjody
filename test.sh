@@ -10,8 +10,9 @@ IN=test.input
 COMP=out.compressed
 OUT=out.final
 
-LZJODY=./lzjody
-test -x lzjody.static && LZJODY=./lzjody.static
+[ ! -z "$WINDIR" ] && EXT=".exe"
+LZJODY=./lzjody$EXT
+test -x lzjody.static$EXT && LZJODY=./lzjody.static$EXT
 
 test ! -x $LZJODY && echo "Compile the program first." && clean_exit 1
 
