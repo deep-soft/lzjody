@@ -43,7 +43,7 @@
 /* Minimum sizes for compression
  * These sizes are roughly calculated as follows:
  * control byte(s) + data byte(s) + other control byte(s)
- * This avoids data expansion cause by interrupting a stream of literals
+ * This avoids data expansion caused by interrupting a stream of literals
  * (which triggers up to 2 more control bytes). Algorithms adjust these if
  * the literal count to flush is going to trigger an additional control byte.
  *
@@ -772,7 +772,7 @@ extern int lzjody_decompress(const unsigned char * const in,
 #ifdef DEBUG
 				if (mode & P_SMASK) { DLOG("Seq length: %x\n", length); }
 				if (mode & P_PLANE) { DLOG("Byte plane length: %x\n", length); }
-#endif /* DLOG */
+#endif /* DEBUG */
 				ipos++;
 				/* Long form has a high byte */
 				if (!sl) {
@@ -835,8 +835,7 @@ extern int lzjody_decompress(const unsigned char * const in,
 						ipos, opos, offset, length);
 				/* memcpy/memmove do not handle the overlap
 				 * correctly when it happens, so we copy the
-				 * data manually.
-				 */
+				 * data manually.  */
 				if (offset >= opos) goto error_lz_offset;
 				mem1 = out + offset;
 				mem2 = out + opos;
