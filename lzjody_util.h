@@ -31,19 +31,19 @@ struct files_t {
 };
 
 /* Number of LZJODY_BSIZE blocks to process per thread */
-#define CHUNK 1024
+#define CHUNK 1
 
 #ifdef THREADED
 /* Per-thread working state */
 struct thread_info {
-	unsigned char blk[LZJODY_BSIZE + 4 * CHUNK];	/* Thread input blocks */
-	unsigned char out[(LZJODY_BSIZE + 4) * CHUNK];	/* Thread output blocks */
+	unsigned char in[LZJODY_BSIZE + 4];	/* Thread input blocks */
+	unsigned char out[LZJODY_BSIZE + 4];	/* Thread output blocks */
 	char options;	/* Compressor options */
 	pthread_t id;	/* Thread ID */
 	int block;	/* What block is thread working on? */
-	int length;	/* Total bytes in block */
-	int o_length;	/* Output length */
-	int working;	/* Is thread working (1) or idle (0)? */
+	int in_length;	/* Input size */
+	int out_length;	/* Output size */
+	int working;	/* 0 = idle, 1 = working, -1 = completed */
 };
 #endif /* THREADED */
 

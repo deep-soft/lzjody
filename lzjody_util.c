@@ -5,14 +5,18 @@
  * Released under The MIT License
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+
+#include "likely_unlikely.h"
 #include "lzjody.h"
 #include "lzjody_util.h"
+
 
 /* Detect Windows and modify as needed */
 #if defined _WIN32 || defined __CYGWIN__
@@ -27,7 +31,7 @@
 #ifdef THREADED
 #include <pthread.h>
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond;	/* pthreads change condition */
+pthread_cond_t thread_change;	/* pthreads change condition */
 static int thread_error;	/* nonzero if any thread fails */
 #endif
 
@@ -42,34 +46,59 @@ static int thread_error;	/* nonzero if any thread fails */
 
 struct files_t files;
 
+
+/**** End definitions, start code ****/
+
+
 #ifdef THREADED
 static void *compress_thread(void *arg)
 {
 	struct thread_info * const thr = arg;
-	const unsigned char *ipos = thr->blk;	/* Uncompressed input pointer */
-	unsigned char *opos = thr->out;	/* Compressed output pointer */
+	unsigned char *input = thr->in;   /* Uncompressed input pointer */
+	unsigned char *output = thr->out; /* Compressed output pointer */
 	int i;
 	int bsize = LZJODY_BSIZE;	/* Compressor block size */
-	int remain = thr->length;	/* Remaining input bytes */
+	int remain = thr->in_length;	/* Remaining input bytes */
 
 	while (remain) {
 		if (remain < LZJODY_BSIZE) bsize = remain;
-		i = lzjody_compress(ipos, opos, thr->options, bsize);
+		i = lzjody_compress(input, output, thr->options, bsize);
 		if (i < 0) {
 			thread_error = 1;
-			pthread_cond_signal(&cond);
+			pthread_cond_signal(&thread_change);
+			pthread_exit(NULL);
 		}
-		ipos += bsize;
-		opos += i;
+		input += bsize;
+		output += i;
+		thr->out_length += i;
 		remain -= bsize;
 	}
-	thr->o_length = opos - thr->out;
-	thr->working = 0;
-	pthread_cond_signal(&cond);
+	thr->working = -1;
+	pthread_cond_signal(&thread_change);
+	pthread_exit(NULL);
+	return 0;
+}
+
+
+#ifndef THREAD_BLOCKS
+ #define THREAD_BLOCKS 64
+#endif
+
+int threaded_write(void *data, unsigned int block)
+{
+	static unsigned char output[(LZJODY_BSIZE + 4) * THREAD_BLOCKS];
+	static unsigned char index[THREAD_BLOCKS];
+
+	if (unlikely(data == NULL && block == 0)) {
+		memset(output, 0, (LZJODY_BSIZE + 4) * THREAD_BLOCKS);
+		memset(index, 0, sizeof(unsigned char) * THREAD_BLOCKS);
+		return 0;
+	}
 
 	return 0;
 }
 #endif /* THREADED */
+
 
 int main(int argc, char **argv)
 {
@@ -84,7 +113,8 @@ int main(int argc, char **argv)
 	struct thread_info *thr;
 	int nprocs = 1;		/* Number of processors */
 	int eof = 0;	/* End of file? */
-	char running = 0;	/* Number of threads running */
+	int running = 0;	/* Number of threads running */
+	int next_block = 1;  /* Next block to write out */
 #endif /* THREADED */
 
 	if (argc < 2) goto usage;
@@ -103,6 +133,7 @@ int main(int argc, char **argv)
 		/* Non-threaded compression */
 		/* fprintf(stderr, "blk %p, blkend %p, files %p\n",
 				blk, blk + LZJODY_BSIZE - 1, files); */
+		errno = 0;
 		while((length = fread(blk, 1, LZJODY_BSIZE, files.in))) {
 			if (ferror(files.in)) goto error_read;
 			DLOG("\n--- Compressing block %d\n", blocknum);
@@ -112,6 +143,7 @@ int main(int argc, char **argv)
 			i = fwrite(out, i, 1, files.out);
 			if (!i) goto error_write;
 			blocknum++;
+			errno = 0;
 		}
 
 #else /* Using POSIX threads */
@@ -138,46 +170,25 @@ int main(int argc, char **argv)
 		thread_error = 0;
 		while (1) {
 			struct thread_info *cur = NULL;
-			uint32_t min_blk;	/* Minimum block number */
-			unsigned int min_thread;	/* Thread for min_blk */
 			int thread;	/* Temporary thread scan counter */
 			int open_thr;	/* Next open thread */
 
 			/* See if lowest block number is finished */
-			while (1) {
-				min_blk = 0xffffffff;
-				min_thread = 0;
+			if (running > 0) for (cur = thr, thread = 0; thread < nprocs; thread++, cur++) {
+fprintf(stderr, "thread consume loop: tid %d/%d, block %d (%d needed), working %d\n", thread, nprocs, cur->block, next_block, cur->working);
 				/* Scan threads for smallest block number */
 				pthread_mutex_lock(&mtx);
-				for (thread = 0; thread < nprocs; thread++) {
-					unsigned int j;
-
-				fprintf(stderr, ":thr %p, thread %d\n",
-						(void *)thr, thread);
-					if (thread_error != 0) goto error_compression;
-					j = (thr + thread)->block;
-					if (j > 0 && j < min_blk) {
-						min_blk = j;
-						min_thread = thread;
-				fprintf(stderr, ":j%d:%d thr %p, cur %p, min_thread %d\n",
-						j, min_blk, (void *)thr, (void *)cur, min_thread);
-					}
-				}
-				pthread_mutex_unlock(&mtx);
-
-				cur = thr + min_thread;
-				fprintf(stderr, "thr %p, cur %p, min_thread %d\n",
-						(void *)thr, (void *)cur, min_thread);
-				if (cur->working == 0 && cur->length > 0) {
+				if (cur->working == -1 && cur->block == next_block) {
 					pthread_detach(cur->id);
 					/* flush finished block */
-					i = fwrite(cur->out, cur->o_length, 1, files.out);
+fprintf(stderr, "Writing block %u : %u bytes from thread %d\n", cur->block, cur->out_length, thread); 
+					i = fwrite(cur->out, cur->out_length, 1, files.out);
 					if (!i) goto error_write;
-					cur->block = 0;
-					cur->length = 0;
-					DLOG("Thread %d done\n", min_thread);
+					cur->working = 0;
 					running--;
-				} else break;
+					next_block++;
+				}
+				pthread_mutex_unlock(&mtx);
 			}
 
 			/* Terminate when all blocks are written */
@@ -190,6 +201,7 @@ int main(int argc, char **argv)
 					/* Find next open thread */
 					cur = thr;
 					for (open_thr = 0; open_thr < nprocs; open_thr++) {
+						if (thread_error != 0) goto error_compression;
 						if (cur->working == 0 && cur->block == 0) break;
 						cur++;
 					}
@@ -197,35 +209,34 @@ int main(int argc, char **argv)
 					/* If no threads are available, wait for one */
 					if (open_thr == nprocs) {
 						pthread_mutex_lock(&mtx);
-						pthread_cond_wait(&cond, &mtx);
+						pthread_cond_wait(&thread_change, &mtx);
 						pthread_mutex_unlock(&mtx);
 						continue;
 					}
 
 					/* Read next block */
-					length = fread(cur->blk, 1, (LZJODY_BSIZE * CHUNK), files.in);
+					errno = 0;
+					length = fread(cur->in, 1, LZJODY_BSIZE, files.in);
 					if (ferror(files.in)) goto error_read;
-					if (length < (LZJODY_BSIZE * CHUNK)) eof = 1;
+					if (feof(files.in)) eof = 1;
+//					if (length < (LZJODY_BSIZE * CHUNK)) eof = 1;
 					if (length > 0) {
 						blocknum++;
 
 						/* Set up thread */
 						cur->working = 1;
 						cur->block = blocknum;
-						cur->length = length;
-						cur->o_length = 0;
+						cur->in_length = length;
+						cur->out_length = 0;
 						running++;
-						DLOG("Thread %d start\n", open_thr);
 
 						/* Start thread */
-						pthread_create(&(cur->id), NULL,
-								compress_thread,
-								(void *)cur);
+						pthread_create(&(cur->id), NULL, compress_thread, (void *)cur);
 					} else eof = 1;
 				} else if (running > 0) {
 					/* EOF but threads still running */
 					pthread_mutex_lock(&mtx);
-					pthread_cond_wait(&cond, &mtx);
+					pthread_cond_wait(&thread_change, &mtx);
 					pthread_mutex_unlock(&mtx);
 				}
 			}
@@ -236,6 +247,7 @@ int main(int argc, char **argv)
 
 	/* Decompress */
 	if (!strncmp(argv[1], "-d", 2)) {
+		errno = 0;
 		while(fread(blk, 1, 2, files.in)) {
 			/* Get block-level decompression options */
 			options = *blk & 0xc0;
@@ -269,8 +281,8 @@ int main(int argc, char **argv)
  /*			     DLOG("Wrote %d bytes\n", i); */
 			}
 
-
 			blocknum++;
+			errno = 0;
 		}
 	}
 
@@ -280,7 +292,7 @@ error_compression:
 	fprintf(stderr, "Fatal error during compression, aborting.\n");
 	exit(EXIT_FAILURE);
 error_read:
-	fprintf(stderr, "Error reading file %s\n", "stdin");
+	fprintf(stderr, "Error reading file '%s': %s\n", "stdin", strerror(errno));
 	exit(EXIT_FAILURE);
 error_write:
 	fprintf(stderr, "Error writing file %s (%d of %d written)\n", "stdout",
