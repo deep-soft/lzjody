@@ -134,7 +134,7 @@ int main(int argc, char **argv)
 		/* fprintf(stderr, "blk %p, blkend %p, files %p\n",
 				blk, blk + LZJODY_BSIZE - 1, files); */
 		errno = 0;
-		while((length = fread(blk, 1, LZJODY_BSIZE, files.in))) {
+		while (length = fread(blk, 1, LZJODY_BSIZE, files.in)) {
 			if (ferror(files.in)) goto error_read;
 			DLOG("\n--- Compressing block %d\n", blocknum);
 			i = lzjody_compress(blk, out, options, length);
@@ -175,9 +175,10 @@ int main(int argc, char **argv)
 
 			/* See if lowest block number is finished */
 			if (running > 0) for (cur = thr, thread = 0; thread < nprocs; thread++, cur++) {
-fprintf(stderr, "thread consume loop: tid %d/%d, block %d (%d needed), working %d\n", thread, nprocs, cur->block, next_block, cur->working);
+if (cur->working == 1 || cur->block == -1) continue;
 				/* Scan threads for smallest block number */
 				pthread_mutex_lock(&mtx);
+fprintf(stderr, "thread consume loop: tid %d/%d, block %d (%d needed), working %d\n", thread + 1, nprocs, cur->block, next_block, cur->working);
 				if (cur->working == -1 && cur->block == next_block) {
 					pthread_detach(cur->id);
 					/* flush finished block */
@@ -185,6 +186,7 @@ fprintf(stderr, "Writing block %u : %u bytes from thread %d\n", cur->block, cur-
 					i = fwrite(cur->out, cur->out_length, 1, files.out);
 					if (!i) goto error_write;
 					cur->working = 0;
+					cur->block = -1;
 					running--;
 					next_block++;
 				}
@@ -192,9 +194,13 @@ fprintf(stderr, "Writing block %u : %u bytes from thread %d\n", cur->block, cur-
 			}
 
 			/* Terminate when all blocks are written */
-			if (eof && (running == 0)) break;
+			if (eof && (running == 0)) {
+fprintf(stderr, "EOF reached and all threads ended\n");
+				break;
+			}
 
 			/* Start threads */
+fprintf(stderr, "running %d of %d, EOF %d\n", running, nprocs, eof);
 			if (running < nprocs) {
 				/* Don't read any more if EOF reached */
 				if (!eof) {
@@ -202,16 +208,8 @@ fprintf(stderr, "Writing block %u : %u bytes from thread %d\n", cur->block, cur-
 					cur = thr;
 					for (open_thr = 0; open_thr < nprocs; open_thr++) {
 						if (thread_error != 0) goto error_compression;
-						if (cur->working == 0 && cur->block == 0) break;
+						if (cur->working == 0) break;
 						cur++;
-					}
-
-					/* If no threads are available, wait for one */
-					if (open_thr == nprocs) {
-						pthread_mutex_lock(&mtx);
-						pthread_cond_wait(&thread_change, &mtx);
-						pthread_mutex_unlock(&mtx);
-						continue;
 					}
 
 					/* Read next block */
@@ -231,14 +229,26 @@ fprintf(stderr, "Writing block %u : %u bytes from thread %d\n", cur->block, cur-
 						running++;
 
 						/* Start thread */
+fprintf(stderr, "thread create: tid %d/%d, block %d\n", open_thr + 1, nprocs, cur->block);
 						pthread_create(&(cur->id), NULL, compress_thread, (void *)cur);
 					} else eof = 1;
-				} else if (running > 0) {
-					/* EOF but threads still running */
+				} else {
+					/* If EOF, wait for threads to complete */
 					pthread_mutex_lock(&mtx);
+fprintf(stderr, "pthread_cond_wait 2 (%d)\n", running);
 					pthread_cond_wait(&thread_change, &mtx);
+fprintf(stderr, "pthread_cond_wait 2 done\n");
 					pthread_mutex_unlock(&mtx);
+					continue;
 				}
+			} else {
+				/* If no threads can be available, wait */
+				pthread_mutex_lock(&mtx);
+fprintf(stderr, "pthread_cond_wait 3 (%d)\n", running);
+				pthread_cond_wait(&thread_change, &mtx);
+fprintf(stderr, "pthread_cond_wait 3 done\n");
+				pthread_mutex_unlock(&mtx);
+				continue;
 			}
 		}
 		free(thr);
