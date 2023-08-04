@@ -110,7 +110,8 @@ int main(int argc, char **argv)
 	int blocknum = 0;	/* Current block number */
 	unsigned char options = 0;	/* Compressor options */
 #ifdef THREADED
-	struct thread_info *thr;
+	struct thread_info *thrs; /* Thread states */
+	unsigned char *blks;	/* Thread data blocks */
 	int nprocs = 1;		/* Number of processors */
 	int eof = 0;	/* End of file? */
 	int running = 0;	/* Number of threads running */
@@ -161,11 +162,18 @@ int main(int argc, char **argv)
 		fprintf(stderr, "lzjody: compressing with %d worker threads\n", nprocs);
 
 		/* Allocate per-thread input/output memory and control blocks */
-		thr = (struct thread_info *)calloc(nprocs, sizeof(struct thread_info));
-		if (!thr) goto oom;
+		thrs = (struct thread_info *)calloc(nprocs, sizeof(struct thread_info));
+		if (thrs == NULL) goto oom;
+		/* We use +8 here instead of +4 to keep data 64-bit aligned */
+		blks = (unsigned char *)malloc((LZJODY_BSIZE + 8) * 2 * nprocs);
+		if (blks == NULL) goto oom;
 
-		/* Set compressor options */
-		for (i = 0; i < nprocs; i++) (thr + i)->options = options;
+		/* Set compressor blocks */
+		for (i = 0; i < nprocs; i++) {
+			(thrs + i)->in = blks + ((LZJODY_BSIZE + 8) * i);
+			(thrs + i)->out = (thrs + i)->in + LZJODY_BSIZE + 8;
+fprintf(stderr, "thread %d in %p out %p\n", i, (thrs+i)->in, (thrs+i)->out);
+		};
 
 		thread_error = 0;
 		while (1) {
@@ -174,7 +182,7 @@ int main(int argc, char **argv)
 			int open_thr;	/* Next open thread */
 
 			/* See if lowest block number is finished */
-			if (running > 0) for (cur = thr, thread = 0; thread < nprocs; thread++, cur++) {
+			if (running > 0) for (cur = thrs, thread = 0; thread < nprocs; thread++, cur++) {
 if (cur->working == 1 || cur->block == -1) continue;
 				/* Scan threads for smallest block number */
 				pthread_mutex_lock(&mtx);
@@ -205,7 +213,7 @@ fprintf(stderr, "running %d of %d, EOF %d\n", running, nprocs, eof);
 				/* Don't read any more if EOF reached */
 				if (!eof) {
 					/* Find next open thread */
-					cur = thr;
+					cur = thrs;
 					for (open_thr = 0; open_thr < nprocs; open_thr++) {
 						if (thread_error != 0) goto error_compression;
 						if (cur->working == 0) break;
@@ -244,14 +252,12 @@ fprintf(stderr, "pthread_cond_wait 2 done\n");
 			} else {
 				/* If no threads can be available, wait */
 				pthread_mutex_lock(&mtx);
-fprintf(stderr, "pthread_cond_wait 3 (%d)\n", running);
 				pthread_cond_wait(&thread_change, &mtx);
-fprintf(stderr, "pthread_cond_wait 3 done\n");
 				pthread_mutex_unlock(&mtx);
 				continue;
 			}
 		}
-		free(thr);
+		free(thrs); free(blks);
 #endif /* THREADED */
 	}
 

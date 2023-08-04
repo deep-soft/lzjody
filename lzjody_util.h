@@ -36,14 +36,14 @@ struct files_t {
 #ifdef THREADED
 /* Per-thread working state */
 struct thread_info {
-	unsigned char in[LZJODY_BSIZE + 4];	/* Thread input blocks */
-	unsigned char out[LZJODY_BSIZE + 4];	/* Thread output blocks */
-	char options;	/* Compressor options */
+	unsigned char *in;	/* Thread input blocks */
+	unsigned char *out;	/* Thread output blocks */
 	pthread_t id;	/* Thread ID */
 	int block;	/* What block is thread working on? */
 	int in_length;	/* Input size */
 	int out_length;	/* Output size */
 	int working;	/* 0 = idle, 1 = working, -1 = completed */
+	char options;	/* Compressor options */
 };
 #endif /* THREADED */
 
