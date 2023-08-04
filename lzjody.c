@@ -239,12 +239,12 @@ error_opos:
 /* Intercept a stream of literals and try byte plane transformation */
 static int lzjody_flush_literals(struct comp_data_t * const restrict data)
 {
-	static unsigned char lit_in[LZJODY_BSIZE];
-	static unsigned char lit_out[LZJODY_BSIZE + 4];
+	unsigned char lit_in[LZJODY_BSIZE];
+	unsigned char lit_out[LZJODY_BSIZE + 4];
 	unsigned int i;
 	int err;
-	static struct comp_data_t d2;
-	static struct lz_index_t idx;
+	struct comp_data_t d2;
+	struct lz_index_t idx;
 
 	/* For zero literals we'll just do nothing. */
 	if (data->literals == 0) return 0;
@@ -651,8 +651,8 @@ extern int lzjody_compress(const unsigned char * const blk_in,
 	int err;
 
 	/* Initialize compression data structure */
-	static struct comp_data_t data;
-	static struct lz_index_t idx;
+	struct comp_data_t data;
+	struct lz_index_t idx;
 
 	DLOG("Comp: blk len 0x%x\n", length);
 
