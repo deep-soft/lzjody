@@ -45,6 +45,14 @@ struct thread_info {
 	int working;	/* 0 = idle, 1 = working, -1 = completed */
 	char options;	/* Compressor options */
 };
+
+/* List of blocks to write */
+struct thread_writes {
+	struct thread_writes *next;
+	unsigned char *data;
+	int length;
+	int block;
+};
 #endif /* THREADED */
 
 #endif	/* LZJODY_UTIL_H */
