@@ -17,6 +17,7 @@
 #include "lzjody.h"
 #include "lzjody_util.h"
 
+#define UTIL_BSIZE_ALLOC (UTIL_BSIZE + ((UTIL_BSIZE / LZJODY_BSIZE) * 4))
 
 /* Detect Windows and modify as needed */
 #if defined _WIN32 || defined __CYGWIN__
@@ -46,26 +47,15 @@ struct thread_writes *writes;
 static void *compress_thread(void *arg)
 {
 	struct thread_info * const thr = arg;
-	unsigned char *input = thr->in;   /* Uncompressed input pointer */
-	unsigned char *output = thr->out; /* Compressed output pointer */
-	int i;
-	int bsize;	/* Compressor block size */
-	int remain = thr->in_length;	/* Remaining input bytes */
+	int bytes;
 
 	thr->out_length = 0;
-	while (remain) {
-		bsize = LZJODY_BSIZE;
-		if (remain < LZJODY_BSIZE) bsize = remain;
-		i = lzjody_compress(input, output, thr->options, bsize);
-		if (i < 0) {
-			thread_error = 1;
-			goto compress_exit;
-		}
-		input += bsize;
-		output += i;
-		thr->out_length += i;
-		remain -= bsize;
+	bytes = lzjody_compress(thr->in, thr->out, thr->options, thr->in_length);
+	if (bytes < 0) {
+		thread_error = 1;
+		goto compress_exit;
 	}
+	thr->out_length += bytes;
 	pthread_mutex_lock(&mtx);
 	thr->working = -1;
 	pthread_mutex_unlock(&mtx);
@@ -161,8 +151,8 @@ write_only:
 
 int main(int argc, char **argv)
 {
-	static unsigned char blk[LZJODY_BSIZE + 4];
-	static unsigned char out[LZJODY_BSIZE + 4];
+	static unsigned char blk[UTIL_BSIZE_ALLOC];
+	static unsigned char out[UTIL_BSIZE_ALLOC];
 	int i;
 	int length = 0;	/* Incoming data block length counter */
 	int c_length;   /* Compressed block length temp variable */
@@ -190,10 +180,8 @@ int main(int argc, char **argv)
 	if (!strncmp(argv[1], "-c", 2)) {
 #ifndef THREADED
 		/* Non-threaded compression */
-		/* fprintf(stderr, "blk %p, blkend %p, files %p\n",
-				blk, blk + LZJODY_BSIZE - 1, files); */
 		errno = 0;
-		while ((length = fread(blk, 1, LZJODY_BSIZE, files.in))) {
+		while ((length = fread(blk, 1, UTIL_BSIZE, files.in))) {
 			if (ferror(files.in)) goto error_read;
 			i = lzjody_compress(blk, out, options, length);
 			if (i < 0) goto error_compression;
@@ -219,12 +207,12 @@ int main(int argc, char **argv)
 		/* Allocate per-thread input/output memory and control blocks */
 		thrs = (struct thread_info *)calloc(nprocs, sizeof(struct thread_info));
 		if (thrs == NULL) goto oom;
-		in_blks = (unsigned char *)malloc((LZJODY_BSIZE + 4) * nprocs);
+		in_blks = (unsigned char *)malloc(UTIL_BSIZE * nprocs);
 		if (in_blks == NULL) goto oom;
 
 		/* Assign compressor input blocks */
 		for (i = 0; i < nprocs; i++) {
-			(thrs + i)->in = in_blks + ((LZJODY_BSIZE + 4) * i);
+			(thrs + i)->in = in_blks + (UTIL_BSIZE * i);
 		};
 
 		thread_error = 0;
@@ -264,9 +252,11 @@ int main(int argc, char **argv)
 			if (eof == 0) for (i = 0; i < nprocs; i++) {
 				cur = thrs + i;
 				if (cur->working == 0) {
-					cur->out = (unsigned char *)malloc(LZJODY_BSIZE + 8);
+//					cur->out = (unsigned char *)malloc(LZJODY_BSIZE + 8);
+					cur->out = (unsigned char *)malloc(UTIL_BSIZE_ALLOC);
 					errno = 0;
-					cur->in_length = fread(cur->in, 1, LZJODY_BSIZE, files.in);
+//					cur->in_length = fread(cur->in, 1, LZJODY_BSIZE, files.in);
+					cur->in_length = fread(cur->in, 1, UTIL_BSIZE, files.in);
 					if (unlikely(errno != 0 || ferror(files.in))) goto error_read;
 					if (feof(files.in)) eof = 1;
 					if (cur->in_length == 0) break;

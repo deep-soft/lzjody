@@ -30,8 +30,12 @@ struct files_t {
 	FILE *out;
 };
 
-/* Number of LZJODY_BSIZE blocks to process per thread */
-#define CHUNK 1
+/* File read chunk size */
+#ifndef UTIL_BSIZE
+ #define UTIL_BSIZE 1048576
+#endif
+#define MIN_BSIZE 4096
+#define IDEAL_BSIZE 1048576
 
 #ifdef THREADED
 /* Per-thread working state */

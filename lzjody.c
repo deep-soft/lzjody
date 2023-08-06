@@ -728,19 +728,20 @@ extern int lzjody_compress(const unsigned char * const blk_in,
 		const unsigned int options,
 		const unsigned int length)
 {
-	int err, size, out_size = 0;
+	int err, size, out_size;
 	const unsigned char *in = blk_in;
 	unsigned char *out = blk_out;
 
 	if (length <= LZJODY_BSIZE) return lzjody_real_compress(blk_in, blk_out, options, length);
 
+	out_size = 0;
 	for (unsigned int i = 0; i < length; i += size, out_size += err, in += size, out += err) {
 		size = length - i;
 		if (size > LZJODY_BSIZE) size = LZJODY_BSIZE;
 		err = lzjody_real_compress(in, out, options, size);
 		if (err < 0) return err;
 	}
-	return err;
+	return out_size;
 }
 
 
