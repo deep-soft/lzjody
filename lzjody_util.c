@@ -201,8 +201,10 @@ int main(int argc, char **argv)
 			nprocs = 1;
 		}
  #endif /* _SC_NPROCESSORS_ONLN */
-
+ #ifdef FORCE_THREADS
+		nprocs = FORCE_THREADS;
 		fprintf(stderr, "lzjody: compressing with %d worker threads\n", nprocs);
+ #endif
 
 		/* Allocate per-thread input/output memory and control blocks */
 		thrs = (struct thread_info *)calloc(nprocs, sizeof(struct thread_info));
