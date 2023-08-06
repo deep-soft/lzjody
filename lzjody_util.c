@@ -75,7 +75,9 @@ static void *compress_thread(void *arg)
 		thr->out_length += i;
 		remain -= bsize;
 	}
+	pthread_mutex_lock(&mtx);
 	thr->working = -1;
+	pthread_mutex_unlock(&mtx);
 compress_exit:
 	pthread_cond_broadcast(&thread_change);
 	pthread_exit(NULL);
@@ -91,10 +93,11 @@ int thread_write_and_free(struct thread_info *file)
 	static int blockcnt = 0;
 
 	if (file == NULL) {
-		fprintf(stderr, "Purge called: %d blocks remain\n", blockcnt - blocknum);
+//		fprintf(stderr, "Purge called: %d blocks remain\n", blockcnt - blocknum);
 		if (blockcnt - blocknum == 0) return 0;
 		goto write_only;
-	} else fprintf(stderr, "Write and free called: %d blocks remain\n", blockcnt - blocknum);
+	}
+//	else fprintf(stderr, "Write and free called: %d blocks remain\n", blockcnt - blocknum);
 
 	blockcnt++;
 
@@ -116,7 +119,7 @@ fprintf(stderr, "Write: %d blocks remain (%d - %d)\n", blockcnt - blocknum, bloc
 	cur->data = file->out;
 	cur->length = file->out_length;
 	cur->block = file->block;
-fprintf(stderr, "thread_write: block %d, length %d\n", cur->block, cur->length);
+//fprintf(stderr, "thread_write: block %d, length %d\n", cur->block, cur->length);
 	
 	/* Add to write queue head in loose block order */
 	if (writes == NULL) {
@@ -135,50 +138,51 @@ write_only:
 	prev = NULL;
 	cur = writes;
 	while (1) {
-fprintf(stderr, "Write loop: %d blocks remain (%d - %d)\n", blockcnt - blocknum, blockcnt, blocknum);
-fprintf(stderr, "thread_write loop start: cur %p, writes %p, next ", (void *)cur, (void *)writes);
-if (cur != NULL) fprintf(stderr, "%p\n", (void *)cur->next);
-else fprintf(stderr, "NULL\n");
+//fprintf(stderr, "Write loop: %d blocks remain (%d - %d)\n", blockcnt - blocknum, blockcnt, blocknum);
+//fprintf(stderr, "thread_write loop start: cur %p, writes %p, next ", (void *)cur, (void *)writes);
+//if (cur != NULL) fprintf(stderr, "%p\n", (void *)cur->next);
+//else fprintf(stderr, "NULL\n");
 		if (cur == NULL) {
-fprintf(stderr, "cur is NULL\n");
+//fprintf(stderr, "cur is NULL\n");
 			break;
 		}
 		if (cur->block == blocknum) {
 			errno = 0;
-fprintf(stderr, "writing block %d length %d\n", blocknum, cur->length);
+//fprintf(stderr, "writing block %d length %d\n", blocknum, cur->length);
 			fwrite(cur->data, cur->length, 1, files.out);
 			if (unlikely(errno != 0 || ferror(files.out))) return -1;
 			// Remove from list
 			if (cur == writes) {
 				// Head of list
-fprintf(stderr, "head of list: cur/writes %p", (void *)cur);
-fprintf(stderr, ", data %p", (void *)cur->data);
-fprintf(stderr, ", next %p\n", (void *)cur->next);
+//fprintf(stderr, "head of list: cur/writes %p", (void *)cur);
+//fprintf(stderr, ", data %p", (void *)cur->data);
+//fprintf(stderr, ", next %p\n", (void *)cur->next);
 				writes = cur->next;
 			} else if (cur->next == NULL) {
 				// Tail of list
-fprintf(stderr, "tail of list\n");
+//fprintf(stderr, "tail of list\n");
 				if (prev != NULL) prev->next = NULL;
 			} else {
 				// Not head or tail of list
-fprintf(stderr, "middle of list\n");
+//fprintf(stderr, "middle of list\n");
 				if (prev != NULL) prev->next = cur->next;
 			}
 			del = cur;
 			cur = cur->next;
 			free(del->data); free(del);
-fprintf(stderr, "survived list\n");
+//fprintf(stderr, "survived list\n");
 			blocknum++;
 		} else {
-fprintf(stderr, "wrong block: %d != %d\n", cur->block, blocknum);
+//fprintf(stderr, "wrong block: %d != %d\n", cur->block, blocknum);
 			prev = cur;
 			cur = cur->next;
 		}
-fprintf(stderr, "thread_write loop end: cur %p, writes %p, next ", (void *)cur, (void *)writes);
-if (cur != NULL) fprintf(stderr, "%p\n", (void *)cur->next);
-else fprintf(stderr, "NULL\n");
+//fprintf(stderr, "thread_write loop end: cur %p, writes %p, next ", (void *)cur, (void *)writes);
+//if (cur != NULL) fprintf(stderr, "%p\n", (void *)cur->next);
+//else fprintf(stderr, "NULL\n");
 		if (unlikely(file == NULL && cur == NULL && blocknum != blockcnt)) cur = writes;
 	}
+//fprintf(stderr, "Returning from thread_write\n");
 	return blocknum;
 }
 #endif /* THREADED */
@@ -241,7 +245,7 @@ int main(int argc, char **argv)
 		}
  #endif /* _SC_NPROCESSORS_ONLN */
 		/* Run two threads per processor */
-		nprocs <<= 2;
+		nprocs <<= 1;
 		fprintf(stderr, "lzjody: compressing with %d worker threads\n", nprocs);
 
 		/* Allocate per-thread input/output memory and control blocks */
@@ -261,6 +265,7 @@ int main(int argc, char **argv)
 
 			// Reap threads, get open thread count
 			t_open = 0;
+			pthread_mutex_lock(&mtx);
 			for (i = 0; i < nprocs; i++) {
 				cur = thrs + i;
 				if (cur->working == 0) {
@@ -269,18 +274,20 @@ int main(int argc, char **argv)
 				}
 				if (cur->working == -1) {
 					// Reap thread
-fprintf(stderr, "  Reap thread %d blk %2d: %4d bytes\n", i, cur->block, cur->out_length);
+//fprintf(stderr, "  Reap thread %d blk %2d: %4d bytes\n", i, cur->block, cur->out_length);
 					if (unlikely(thread_write_and_free(cur) < 0)) goto error_write;
+//fprintf(stderr, "Detaching thread...\n");
 					pthread_detach(cur->id);
 					cur->working = 0;
 					t_open++;
+//fprintf(stderr, "Detach done\n");
 				}
 			}
+//fprintf(stderr, "Open threads: %d\n", t_open);
 
 			// If no threads are open and not EOF then wait for one
 			// If EOF then wait for a thread too
 			if (t_open == 0 || unlikely(t_open != nprocs && eof == 1)) {
-				pthread_mutex_lock(&mtx);
 				pthread_cond_wait(&thread_change, &mtx);
 				pthread_mutex_unlock(&mtx);
 				continue;
@@ -298,7 +305,7 @@ fprintf(stderr, "  Reap thread %d blk %2d: %4d bytes\n", i, cur->block, cur->out
 					if (unlikely(errno != 0 || ferror(files.in))) goto error_read;
 					if (feof(files.in)) eof = 1;
 					if (cur->in_length == 0) break;
-fprintf(stderr, "Create thread %d blk %2d: %4d bytes\n", i, blocknum, cur->in_length);
+//fprintf(stderr, "Create thread %d blk %2d: %4d bytes\n", i, blocknum, cur->in_length);
 					cur->block = blocknum;
 					blocknum++;
 					cur->working = 1;
@@ -306,10 +313,12 @@ fprintf(stderr, "Create thread %d blk %2d: %4d bytes\n", i, blocknum, cur->in_le
 				}
 				if (eof == 1) break;
 			}
+			pthread_mutex_unlock(&mtx);
 		}
+		pthread_mutex_unlock(&mtx);
 		if (unlikely(thread_write_and_free(NULL) < 0)) goto error_write;
 		free(thrs); free(in_blks);
-fprintf(stderr, "Normal exit\n");
+//fprintf(stderr, "Normal exit\n");
 #endif /* THREADED */
 	}
 
