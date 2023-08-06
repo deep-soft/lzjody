@@ -35,15 +35,6 @@ pthread_cond_t thread_change;	/* pthreads change condition */
 static int thread_error;	/* nonzero if any thread fails */
 #endif
 
-/* Debugging stuff */
-#ifndef DLOG
- #ifdef DEBUG
-  #define DLOG(...) fprintf(stderr, __VA_ARGS__)
- #else
-  #define DLOG(...)
- #endif
-#endif
-
 struct files_t files;
 struct thread_writes *writes;
 
@@ -93,11 +84,9 @@ int thread_write_and_free(struct thread_info *file)
 	static int blockcnt = 0;
 
 	if (file == NULL) {
-//		fprintf(stderr, "Purge called: %d blocks remain\n", blockcnt - blocknum);
 		if (blockcnt - blocknum == 0) return 0;
 		goto write_only;
 	}
-//	else fprintf(stderr, "Write and free called: %d blocks remain\n", blockcnt - blocknum);
 
 	blockcnt++;
 
@@ -119,7 +108,6 @@ fprintf(stderr, "Write: %d blocks remain (%d - %d)\n", blockcnt - blocknum, bloc
 	cur->data = file->out;
 	cur->length = file->out_length;
 	cur->block = file->block;
-//fprintf(stderr, "thread_write: block %d, length %d\n", cur->block, cur->length);
 	
 	/* Add to write queue head in loose block order */
 	if (writes == NULL) {
@@ -138,51 +126,34 @@ write_only:
 	prev = NULL;
 	cur = writes;
 	while (1) {
-//fprintf(stderr, "Write loop: %d blocks remain (%d - %d)\n", blockcnt - blocknum, blockcnt, blocknum);
-//fprintf(stderr, "thread_write loop start: cur %p, writes %p, next ", (void *)cur, (void *)writes);
-//if (cur != NULL) fprintf(stderr, "%p\n", (void *)cur->next);
-//else fprintf(stderr, "NULL\n");
 		if (cur == NULL) {
-//fprintf(stderr, "cur is NULL\n");
 			break;
 		}
 		if (cur->block == blocknum) {
 			errno = 0;
-//fprintf(stderr, "writing block %d length %d\n", blocknum, cur->length);
 			fwrite(cur->data, cur->length, 1, files.out);
 			if (unlikely(errno != 0 || ferror(files.out))) return -1;
 			// Remove from list
 			if (cur == writes) {
 				// Head of list
-//fprintf(stderr, "head of list: cur/writes %p", (void *)cur);
-//fprintf(stderr, ", data %p", (void *)cur->data);
-//fprintf(stderr, ", next %p\n", (void *)cur->next);
 				writes = cur->next;
 			} else if (cur->next == NULL) {
 				// Tail of list
-//fprintf(stderr, "tail of list\n");
 				if (prev != NULL) prev->next = NULL;
 			} else {
 				// Not head or tail of list
-//fprintf(stderr, "middle of list\n");
 				if (prev != NULL) prev->next = cur->next;
 			}
 			del = cur;
 			cur = cur->next;
 			free(del->data); free(del);
-//fprintf(stderr, "survived list\n");
 			blocknum++;
 		} else {
-//fprintf(stderr, "wrong block: %d != %d\n", cur->block, blocknum);
 			prev = cur;
 			cur = cur->next;
 		}
-//fprintf(stderr, "thread_write loop end: cur %p, writes %p, next ", (void *)cur, (void *)writes);
-//if (cur != NULL) fprintf(stderr, "%p\n", (void *)cur->next);
-//else fprintf(stderr, "NULL\n");
 		if (unlikely(file == NULL && cur == NULL && blocknum != blockcnt)) cur = writes;
 	}
-//fprintf(stderr, "Returning from thread_write\n");
 	return blocknum;
 }
 #endif /* THREADED */
@@ -224,10 +195,8 @@ int main(int argc, char **argv)
 		errno = 0;
 		while ((length = fread(blk, 1, LZJODY_BSIZE, files.in))) {
 			if (ferror(files.in)) goto error_read;
-			DLOG("\n--- Compressing block %d (%d bytes)\n", length, blocknum);
 			i = lzjody_compress(blk, out, options, length);
 			if (i < 0) goto error_compression;
-			DLOG("c_size %d bytes\n", i);
 			i = fwrite(out, i, 1, files.out);
 			if (unlikely(!i)) goto error_write;
 			blocknum++;
@@ -244,6 +213,7 @@ int main(int argc, char **argv)
 			nprocs = 1;
 		}
  #endif /* _SC_NPROCESSORS_ONLN */
+
 		fprintf(stderr, "lzjody: compressing with %d worker threads\n", nprocs);
 
 		/* Allocate per-thread input/output memory and control blocks */
@@ -267,21 +237,17 @@ int main(int argc, char **argv)
 			for (i = 0; i < nprocs; i++) {
 				cur = thrs + i;
 				if (cur->working == 0) {
-//fprintf(stderr, "Open thread %d\n", i);
 					t_open++;
 				}
 				if (cur->working == -1) {
 					// Reap thread
-//fprintf(stderr, "  Reap thread %d blk %2d: %4d bytes\n", i, cur->block, cur->out_length);
 					if (unlikely(thread_write_and_free(cur) < 0)) goto error_write;
-//fprintf(stderr, "Detaching thread...\n");
 					pthread_detach(cur->id);
+					if (thread_error != 0) goto error_compression;
 					cur->working = 0;
 					t_open++;
-//fprintf(stderr, "Detach done\n");
 				}
 			}
-//fprintf(stderr, "Open threads: %d\n", t_open);
 
 			// If no threads are open and not EOF then wait for one
 			// If EOF then wait for a thread too
@@ -291,6 +257,7 @@ int main(int argc, char **argv)
 				continue;
 			}
 
+			pthread_mutex_unlock(&mtx);
 			if (eof == 1 && t_open == nprocs) break;
 
 			// Start threads
@@ -303,7 +270,6 @@ int main(int argc, char **argv)
 					if (unlikely(errno != 0 || ferror(files.in))) goto error_read;
 					if (feof(files.in)) eof = 1;
 					if (cur->in_length == 0) break;
-//fprintf(stderr, "Create thread %d blk %2d: %4d bytes\n", i, blocknum, cur->in_length);
 					cur->block = blocknum;
 					blocknum++;
 					cur->working = 1;
@@ -311,12 +277,9 @@ int main(int argc, char **argv)
 				}
 				if (eof == 1) break;
 			}
-			pthread_mutex_unlock(&mtx);
 		}
-		pthread_mutex_unlock(&mtx);
 		if (unlikely(thread_write_and_free(NULL) < 0)) goto error_write;
 		free(thrs); free(in_blks);
-//fprintf(stderr, "Normal exit\n");
 #endif /* THREADED */
 	}
 
@@ -339,7 +302,6 @@ int main(int argc, char **argv)
 			if (options & O_NOCOMPRESS) {
 				c_length = *(blk + 1);
 				c_length |= ((*blk & 0x1f) << 8);
-				DLOG("--- Writing uncompressed block %d (%d bytes)\n", blocknum, c_length);
 				if (c_length > LZJODY_BSIZE) goto error_unc_length;
 				i = fwrite((blk + 2), 1, c_length, files.out);
 				if (i != c_length) {
@@ -347,13 +309,11 @@ int main(int argc, char **argv)
 					goto error_write;
 				}
 			} else {
-				DLOG("--- Decompressing block %d\n", blocknum);
 				length = lzjody_decompress(blk, out, i, options);
 				if (length < 0) goto error_decompress;
 				if (length > LZJODY_BSIZE) goto error_blocksize_decomp;
 				i = fwrite(out, 1, length, files.out);
 				if (i != length) goto error_write;
- /*			     DLOG("Wrote %d bytes\n", i); */
 			}
 
 			blocknum++;
