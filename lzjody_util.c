@@ -244,8 +244,6 @@ int main(int argc, char **argv)
 			nprocs = 1;
 		}
  #endif /* _SC_NPROCESSORS_ONLN */
-		/* Run two threads per processor */
-		nprocs <<= 1;
 		fprintf(stderr, "lzjody: compressing with %d worker threads\n", nprocs);
 
 		/* Allocate per-thread input/output memory and control blocks */
