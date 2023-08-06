@@ -636,6 +636,7 @@ static int lzjody_find_seq8(struct comp_data_t * const restrict data)
 	return 0;
 }
 
+
 /* Lempel-Ziv compressor by Jody Bruchon (LZJODY)
  * Compresses "blk" data and puts result in "out"
  * out must be at least 2 bytes larger than blk in case
@@ -643,7 +644,7 @@ static int lzjody_find_seq8(struct comp_data_t * const restrict data)
  * Returns the size of "out" data or returns -1 if the
  * compressed data is not smaller than the original data.
  */
-extern int lzjody_compress(const unsigned char * const blk_in,
+int lzjody_real_compress(const unsigned char * const blk_in,
 		unsigned char * const blk_out,
 		const unsigned int options,
 		const unsigned int length)
@@ -717,8 +718,31 @@ error_large_length:
 	return -1;
 error_zero_length:
 	fprintf(stderr, "liblzjody: error: cannot compress a zero-length block\n");
-	return -1;
+	return -2;
 }
+
+
+/* Carve large blocks into sizes the compressor can handle */
+extern int lzjody_compress(const unsigned char * const blk_in,
+		unsigned char * const blk_out,
+		const unsigned int options,
+		const unsigned int length)
+{
+	int err, size, out_size = 0;
+	const unsigned char *in = blk_in;
+	unsigned char *out = blk_out;
+
+	if (length <= LZJODY_BSIZE) return lzjody_real_compress(blk_in, blk_out, options, length);
+
+	for (unsigned int i = 0; i < length; i += size, out_size += err, in += size, out += err) {
+		size = length - i;
+		if (size > LZJODY_BSIZE) size = LZJODY_BSIZE;
+		err = lzjody_real_compress(in, out, options, size);
+		if (err < 0) return err;
+	}
+	return err;
+}
+
 
 /* LZJODY decompressor */
 extern int lzjody_decompress(const unsigned char * const in,
@@ -948,31 +972,30 @@ error_opos:
 error_bp_length:
 	fprintf(stderr, "liblzjody: error: byte plane length overflows output pos (%d > %d)\n",
 			opos, LZJODY_BSIZE);
-	return -1;
+	return -2;
 error_rle_length:
 	fprintf(stderr, "liblzjody: error: RLE length overflows output pos (%d > %d)\n",
 			opos + length, LZJODY_BSIZE);
-	return -1;
+	return -3;
 error_lit_length:
 	fprintf(stderr, "liblzjody: error: literal length overflows output pos (%d > %d)\n",
 			opos, LZJODY_BSIZE);
-	return -1;
+	return -4;
 error_lz_length:
 	fprintf(stderr, "liblzjody: error: LZ length overflows output pos (%d > %d)\n",
 			opos, LZJODY_BSIZE);
-	return -1;
+	return -5;
 error_lz_offset:
 	fprintf(stderr, "liblzjody: data error: LZ offset 0x%x >= output pos 0x%x)\n", offset, opos);
-	return -1;
+	return -6;
 error_seq:
 	fprintf(stderr, "liblzjody: data error: seq%d overflow (length 0x%x)\n", seqbits, length);
-	return -1;
+	return -7;
 error_length:
 	fprintf(stderr, "liblzjody: data error: length 0x%x greater than maximum 0x%x @ 0x%x\n",
 			length, LZJODY_BSIZE, ipos - 1);
-	return -1;
+	return -8;
 error_mode:
 	fprintf(stderr, "liblzjody: error: invalid decompressor mode 0x%x at 0x%x\n", mode, ipos);
-	return -1;
+	return -9;
 }
-
