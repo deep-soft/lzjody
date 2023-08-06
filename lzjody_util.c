@@ -88,13 +88,15 @@ int thread_write_and_free(struct thread_info *file)
 {
 	static int blocknum = 0;
 	struct thread_writes *cur, *prev, *del;
-	static int written = 0;
+	static int blockcnt = 0;
 
 	if (file == NULL) {
-		fprintf(stderr, "Write only called: %d blocks remain\n", blocknum - written);
-		if (blocknum - written == 0) return 0;
+		fprintf(stderr, "Purge called: %d blocks remain\n", blockcnt - blocknum);
+		if (blockcnt - blocknum == 0) return 0;
 		goto write_only;
-	}
+	} else fprintf(stderr, "Write and free called: %d blocks remain\n", blockcnt - blocknum);
+
+	blockcnt++;
 
 #if 0
 	if (file->block == blocknum) {
@@ -104,9 +106,8 @@ fprintf(stderr, "EARLY writing block %d length %d\n", blocknum, file->out_length
 		if (unlikely(errno != 0 || ferror(files.out))) return -1;
 		free(file->out);
 		blocknum++;
-		written++;
-fprintf(stderr, "Write: %d blocks remain (%d - %d)\n", blocknum - written, blocknum, written);
-		return 1;
+fprintf(stderr, "Write: %d blocks remain (%d - %d)\n", blockcnt - blocknum, blockcnt, blocknum);
+		return blocknum;
 	}
 #endif // 0
 
@@ -134,7 +135,7 @@ write_only:
 	prev = NULL;
 	cur = writes;
 	while (1) {
-fprintf(stderr, "Write loop: %d blocks remain (%d - %d)\n", blocknum - written, blocknum, written);
+fprintf(stderr, "Write loop: %d blocks remain (%d - %d)\n", blockcnt - blocknum, blockcnt, blocknum);
 fprintf(stderr, "thread_write loop start: cur %p, writes %p, next ", (void *)cur, (void *)writes);
 if (cur != NULL) fprintf(stderr, "%p\n", (void *)cur->next);
 else fprintf(stderr, "NULL\n");
@@ -168,7 +169,6 @@ fprintf(stderr, "middle of list\n");
 			free(del->data); free(del);
 fprintf(stderr, "survived list\n");
 			blocknum++;
-			written++;
 		} else {
 fprintf(stderr, "wrong block: %d != %d\n", cur->block, blocknum);
 			prev = cur;
@@ -177,9 +177,9 @@ fprintf(stderr, "wrong block: %d != %d\n", cur->block, blocknum);
 fprintf(stderr, "thread_write loop end: cur %p, writes %p, next ", (void *)cur, (void *)writes);
 if (cur != NULL) fprintf(stderr, "%p\n", (void *)cur->next);
 else fprintf(stderr, "NULL\n");
-		if (unlikely(file == NULL && cur == NULL && written != blocknum)) cur = writes;
+		if (unlikely(file == NULL && cur == NULL && blocknum != blockcnt)) cur = writes;
 	}
-	return written;
+	return blocknum;
 }
 #endif /* THREADED */
 
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
 		errno = 0;
 		while (length = fread(blk, 1, LZJODY_BSIZE, files.in)) {
 			if (ferror(files.in)) goto error_read;
-			DLOG("\n--- Compressing block %d\n", blocknum);
+			DLOG("\n--- Compressing block %d (%d bytes)\n", length, blocknum);
 			i = lzjody_compress(blk, out, options, length);
 			if (i < 0) goto error_compression;
 			DLOG("c_size %d bytes\n", i);
@@ -264,7 +264,7 @@ int main(int argc, char **argv)
 			for (i = 0; i < nprocs; i++) {
 				cur = thrs + i;
 				if (cur->working == 0) {
-fprintf(stderr, "Open thread %d\n", i);
+//fprintf(stderr, "Open thread %d\n", i);
 					t_open++;
 				}
 				if (cur->working == -1) {
@@ -297,6 +297,7 @@ fprintf(stderr, "  Reap thread %d blk %2d: %4d bytes\n", i, cur->block, cur->out
 					cur->in_length = fread(cur->in, 1, LZJODY_BSIZE, files.in);
 					if (unlikely(errno != 0 || ferror(files.in))) goto error_read;
 					if (feof(files.in)) eof = 1;
+					if (cur->in_length == 0) break;
 fprintf(stderr, "Create thread %d blk %2d: %4d bytes\n", i, blocknum, cur->in_length);
 					cur->block = blocknum;
 					blocknum++;
