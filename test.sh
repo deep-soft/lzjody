@@ -6,9 +6,8 @@ clean_exit () {
 }
 
 TF="$(mktemp)"
-IN=test.input
-COMP=out.compressed
-OUT=out.final
+COMP=testdata/out.compressed
+OUT=testdata/out.final
 
 [ ! -z "$WINDIR" ] && EXT=".exe"
 LZJODY=./lzjody$EXT
@@ -19,38 +18,49 @@ test ! -x $LZJODY && echo "Compile the program first." && clean_exit 1
 # For running e.g. Valgrind
 test -z "$1" || LZJODY="$@ $LZJODY"
 
+
+### Main compression tests
+
+# Stadard data test
 CFAIL=0; DFAIL=0
-$LZJODY -c < $IN > $COMP 2>log.test.compress || CFAIL=1
-if [ $CFAIL -eq 0 ]
-	then $LZJODY -d < $COMP > $OUT 2>log.test.decompress || DFAIL=1
-fi
+IN=testdata/standard
+echo "$LZJODY -c < $IN > $COMP 2>testdata/log.compress1 || CFAIL=1"
+$LZJODY -c < $IN > $COMP 2>testdata/log.compress1 || CFAIL=1
+[ $CFAIL -eq 0 ] && $LZJODY -d < $COMP > $OUT 2>testdata/log.decompress1 || DFAIL=1
+[ $CFAIL -eq 1 ] && echo -e "\nCompressor block test FAILED\n" && clean_exit 1
+[ $DFAIL -eq 1 ] && echo -e "\nDecompressor block test FAILED\n" && clean_exit 1
+S1="$(sha1sum $IN | cut -d' ' -f1)"; S2="$(sha1sum $OUT | cut -d' ' -f1)"
+test "$S1" != "$S2" && echo -e "\nCompressor/decompressor tests FAILED: mismatched hashes\n" && clean_exit 1
+echo "Block tests PASSED"
 
-test $CFAIL -eq 1 && echo -e "\nCompressor block test FAILED.\n" && clean_exit 1
-test $DFAIL -eq 1 && echo -e "\nDecompressor block test FAILED.\n" && clean_exit 1
+# Incompressible data test
+CFAIL=0; DFAIL=0
+IN=testdata/cantcompress
+$LZJODY -c < $IN > $COMP 2>testdata/log.compress2 || CFAIL=1
+[ $CFAIL -eq 0 ] && $LZJODY -d < $COMP > $OUT 2>testdata/log.decompress2 || DFAIL=1
+[ $CFAIL -eq 1 ] && echo -e "\nCompressor oversize test FAILED\n" && clean_exit 1
+[ $DFAIL -eq 1 ] && echo -e "\nDecompressor oversize test FAILED\n" && clean_exit 1
+S1="$(sha1sum $IN | cut -d' ' -f1)"; S2="$(sha1sum $OUT | cut -d' ' -f1)"
+test "$S1" != "$S2" && echo -e "\nCompressor/decompressor oversize tests FAILED: mismatched hashes\n" && clean_exit 1
+echo "Oversize tests PASSED"
 
-# Check hashes
-S1="$(sha1sum $IN | cut -d' ' -f1)"
-S2="$(sha1sum $OUT | cut -d' ' -f1)"
-test "$S1" != "$S2" && echo -e "\nCompressor/decompressor tests FAILED: mismatched hashes.\n" && clean_exit 1
-echo -e "\nCompress + decompress test PASSED"
 
-
-### Decompressor tests
+### Decompressor error tests
 
 # Out-of-bounds length tests
 
-: > log.test.invalid
+: > testdata/log.invalid
 echo -n "Testing invalid (large) lengths ";
-echo "Large length test:" >> log.test.invalid
+echo "Large length test:" >> testdata/log.invalid
 echo -en '\x10\x05\xaf\xff' > $TF
 dd if=/dev/zero bs=4095 count=1 2>/dev/null >> $TF
-$LZJODY -d < $TF 2>> log.test.invalid && echo "FAILED" && clean_exit 1
+$LZJODY -d < $TF 2>> testdata/log.invalid && echo "FAILED" && clean_exit 1
 echo "PASSED"
 
 echo -n "Testing invalid (zero) lengths ";
-echo "Zero length test:" >> log.test.invalid
+echo "Zero length test:" >> testdata/log.invalid
 echo -en '\x00\x00\x00' | \
-$LZJODY -d 2>> log.test.invalid && echo "FAILED" && clean_exit 1
+$LZJODY -d 2>> testdata/log.invalid && echo "FAILED" && clean_exit 1
 echo "PASSED"
 
 ### All tests passed!

@@ -84,8 +84,9 @@ stripped: lzjody lzjody.static bpxfrm
 	$(CC) -c $(COMPILER_OPTIONS) $(CFLAGS) $<
 
 clean:
-	rm -f *.o *.a *~ .*un~ *.so* debug.log *.?.gz log.test.* out.*
-	rm -f lzjody*.static$(EXT) bpxfrm$(EXT) diffxfrm$(EXT) xorxfrm$(EXT)
+	rm -f *.o *.a *~ .*un~ *.so* debug.log *.?.gz
+	rm -f lzjody$(EXT) lzjody*.static$(EXT) bpxfrm$(EXT) diffxfrm$(EXT) xorxfrm$(EXT)
+	rm -f testdir/log.* testdir/out.*
 
 distclean: clean
 	rm -f *.pkg.tar.*

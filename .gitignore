@@ -26,8 +26,8 @@ Config.in
 /diffxfrm
 /xorxfrm
 /debug.log
-/log.test.*
-/out.*
+/testdata/log.*
+/testdata/out.*
 
 #
 # Backups / patches
