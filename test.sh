@@ -9,9 +9,12 @@ TF="$(mktemp)"
 COMP=testdata/out.compressed
 OUT=testdata/out.final
 
-[ ! -z "$WINDIR" ] && EXT=".exe"
-LZJODY=./lzjody$EXT
-test -x lzjody.static$EXT && LZJODY=./lzjody.static$EXT
+if [ -z "$LZJODY" ]
+	then
+	[ ! -z "$WINDIR" ] && EXT=".exe"
+	LZJODY=./lzjody$EXT
+	test -x lzjody.static$EXT && LZJODY=./lzjody.static$EXT
+fi
 
 test ! -x $LZJODY && echo "Compile the program first." && clean_exit 1
 
