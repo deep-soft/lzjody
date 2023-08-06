@@ -12,8 +12,8 @@
 extern "C" {
 #endif
 
-#define LZJODY_VER "0.1"
-#define LZJODY_VERDATE "2014-12-29"
+#define LZJODY_VER "0.3"
+#define LZJODY_VERDATE "2023-08-06"
 
 /* Maximum amount of data the algorithm can process at a time */
 #define LZJODY_BSIZE 4096

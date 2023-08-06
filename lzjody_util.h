@@ -10,8 +10,8 @@
 
 #include <lzjody.h>
 
-#define LZJODY_UTIL_VER "0.2"
-#define LZJODY_UTIL_VERDATE "2023-07-03"
+#define LZJODY_UTIL_VER "0.3"
+#define LZJODY_UTIL_VERDATE "2023-08-06"
 
 /* Debugging stuff */
 #ifndef DLOG
