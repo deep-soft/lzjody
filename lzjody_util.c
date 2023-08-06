@@ -222,7 +222,7 @@ int main(int argc, char **argv)
 		/* fprintf(stderr, "blk %p, blkend %p, files %p\n",
 				blk, blk + LZJODY_BSIZE - 1, files); */
 		errno = 0;
-		while (length = fread(blk, 1, LZJODY_BSIZE, files.in)) {
+		while ((length = fread(blk, 1, LZJODY_BSIZE, files.in))) {
 			if (ferror(files.in)) goto error_read;
 			DLOG("\n--- Compressing block %d (%d bytes)\n", length, blocknum);
 			i = lzjody_compress(blk, out, options, length);
