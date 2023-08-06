@@ -53,6 +53,9 @@ static void *compress_thread(void *arg)
 	bytes = lzjody_compress(thr->in, thr->out, thr->options, thr->in_length);
 	if (bytes < 0) {
 		thread_error = 1;
+		pthread_mutex_lock(&mtx);
+		thr->working = 0;
+		pthread_mutex_unlock(&mtx);
 		goto compress_exit;
 	}
 	thr->out_length += bytes;
@@ -62,7 +65,6 @@ static void *compress_thread(void *arg)
 compress_exit:
 	pthread_cond_broadcast(&thread_change);
 	pthread_exit(NULL);
-	return 0;
 }
 
 

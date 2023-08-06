@@ -56,7 +56,7 @@
 /* Sequence lengths are not byte counts, they are word counts! */
 #define MIN_SEQ32_LENGTH 2
 #define MIN_SEQ16_LENGTH 3
-#define MIN_SEQ8_LENGTH 4
+#define MIN_SEQ8_LENGTH 5
 #define MIN_PLANE_LENGTH 8
 
 /* If a byte occurs more times than this in a block, use linear scanning */
@@ -604,6 +604,7 @@ static int lzjody_find_seq16(struct comp_data_t * const restrict data)
 static int lzjody_find_seq8(struct comp_data_t * const restrict data)
 {
 	uint8_t num8;
+	int8_t diff;
 	uint8_t *m8 = (uint8_t *)((uintptr_t)data->in + (uintptr_t)data->ipos);
 	const uint8_t num_orig8 = *m8;
 	unsigned int seqcnt;
@@ -615,10 +616,11 @@ static int lzjody_find_seq8(struct comp_data_t * const restrict data)
 
 	seqcnt = 0;
 	num8 = *m8;
+	diff = *(m8 + 1) - num8;
 	while (*m8 == num8) {
 		if ((data->ipos + seqcnt) >= data->length) break;
 		seqcnt++;
-		num8++;
+		num8 += diff;
 		m8++;
 	}
 
@@ -629,7 +631,8 @@ static int lzjody_find_seq8(struct comp_data_t * const restrict data)
 		err = lzjody_write_control(data, P_SEQ8, seqcnt);
 		if (err < 0) return err;
 		*(uint8_t *)((uintptr_t)data->out + (uintptr_t)data->opos) = num_orig8;
-		data->opos += sizeof(uint8_t);
+		*(uint8_t *)((uintptr_t)data->out + (uintptr_t)data->opos + 1) = diff;
+		data->opos += sizeof(uint8_t) * 2;
 		data->ipos += seqcnt;
 		return 1;
 	}
@@ -758,9 +761,10 @@ extern int lzjody_decompress(const unsigned char * const in,
 	register unsigned int length = 0;
 	unsigned int sl;	/* short/long */
 	unsigned int control = 0;
-	unsigned char c;
 	const unsigned char *mem1;
 	unsigned char *mem2;
+	unsigned char c;
+	int8_t diff;
 	union {
 		uint32_t *m32;
 		uint16_t *m16;
@@ -947,14 +951,15 @@ extern int lzjody_decompress(const unsigned char * const in,
 				DLOG("%04x:%04x: Seq(8) 0x%x\n", ipos, opos, length);
 				/* Get sequence start number */
 				num.num8 = *(uint8_t *)((uintptr_t)in + (uintptr_t)ipos);
-				ipos += sizeof(uint8_t);
+				diff = *(int8_t *)((uintptr_t)in + (uintptr_t)ipos + 1);
+				ipos += sizeof(uint8_t) * 2;
 				/* Get sequence start position */
 				mem.m8 = (uint8_t *)((uintptr_t)out + (uintptr_t)opos);
 				opos += length;
 				if (opos > LZJODY_BSIZE) goto error_seq;
 				while (length > 0) {
 					*mem.m8 = num.num8;
-					mem.m8++; num.num8++;
+					mem.m8++; num.num8 += diff;
 					length--;
 				}
 				break;
