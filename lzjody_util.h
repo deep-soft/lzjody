@@ -38,6 +38,7 @@ struct files_t {
 #define IDEAL_BSIZE 1048576
 
 #ifdef THREADED
+ #include <pthread.h>
 /* Per-thread working state */
 struct thread_info {
 	unsigned char *in;	/* Thread input blocks */
