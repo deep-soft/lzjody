@@ -19,7 +19,16 @@
  #endif
 #endif
 
-/* Top 3 bits of a control byte */
+/* Control byte flags
+ *
+ * 7 6 5 4 3 2 1 0
+ * | | | | | | \-+-- Sequential compression (8/16/32)
+ * | | | | | \------ Byte plane transformation applied
+ * | | | | \-------- Not used
+ * | | | \---------- LZ match length is 16 bits wide, not 8 bits
+ * | \-+------------ LZ/RLE/literal compression
+ * \---------------- Short control byte form
+ */
 #define P_SHORT	0x80	/* Compact control byte form */
 #define P_LZ	0x60	/* LZ (dictionary) compression */
 #define P_RLE	0x40	/* RLE compression */
