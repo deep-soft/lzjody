@@ -73,6 +73,10 @@
  #define MAX_LZ_BYTE_SCANS 0x800
 #endif
 
+#define BSWAP32(a) (((a & 0xff000000U) >> 24) | ((a & 0x00ff0000U) >> 8) | ((a & 0x0000ff00U) << 8) | ((a & 0x000000ffU) << 24))
+#define BSWAP16(a) (((a & 0xff00U) >> 8) | ((a & 0x00ffU) << 8))
+
+
 struct comp_data_t {
 	const unsigned char *in;
 	unsigned char *out;
@@ -536,7 +540,7 @@ static int lzjody_find_seq32(struct comp_data_t * const restrict data)
 {
 	uint32_t num32;
 	uint32_t *m32 = (uint32_t *)((uintptr_t)data->in + (uintptr_t)data->ipos);
-	const uint32_t num_orig32 = *m32;
+	const uint32_t num_orig32 = BSWAP32(*m32);
 	unsigned int seqcnt;
 	unsigned int big_literals = 0;
 	int err;
@@ -546,9 +550,9 @@ static int lzjody_find_seq32(struct comp_data_t * const restrict data)
 
 	/* 32-bit sequences */
 	seqcnt = 0;
-	num32 = *m32;
+	num32 = BSWAP32(*m32);
 	/* Loop bounds check compensates for bit width of data elements */
-	while (*m32 == num32) {
+	while (BSWAP32(*m32) == num32) {
 		if ((data->ipos + seqcnt + 3) >= data->length) break;
 		seqcnt += 4;
 		num32++;
@@ -576,7 +580,7 @@ static int lzjody_find_seq16(struct comp_data_t * const restrict data)
 {
 	uint16_t num16;
 	uint16_t *m16 = (uint16_t *)((uintptr_t)data->in + (uintptr_t)data->ipos);
-	const uint16_t num_orig16 = *m16;
+	const uint16_t num_orig16 = BSWAP16(*m16);
 	unsigned int seqcnt;
 	unsigned int big_literals = 0;
 	int err;
@@ -585,9 +589,9 @@ static int lzjody_find_seq16(struct comp_data_t * const restrict data)
 	if (data->literals > P_SHORT_MAX) big_literals = 1;
 
 	seqcnt = 0;
-	num16 = *m16;
+	num16 = BSWAP16(*m16);
 	/* Loop bounds check compensates for bit width of data elements */
-	while (*m16 == num16) {
+	while (BSWAP16(*m16) == num16) {
 		if ((data->ipos + (seqcnt << 1) + 1) >= data->length) break;
 		seqcnt++;
 		num16++;
@@ -808,7 +812,7 @@ extern int lzjody_decompress(const unsigned char * const in,
 			if (mode & (P_SMASK | P_PLANE)) {
 				length = *(in + ipos);
 #ifdef DEBUG
-				if (mode & P_SMASK) { DLOG("Seq length: %x\n", length); }
+				if (mode & P_SMASK) { DLOG("Seq%u length: %x\n", 4 << (mode & P_SMASK), length); }
 				if (mode & P_PLANE) { DLOG("Byte plane length: %x\n", length); }
 #endif /* DEBUG */
 				ipos++;
@@ -929,7 +933,7 @@ extern int lzjody_decompress(const unsigned char * const in,
 				if (opos > LZJODY_BSIZE) goto error_seq;
 				DLOG("opos = 0x%x, length = 0x%x\n", opos, length);
 				while (length > 0) {
-					*mem.m32 = num.num32;
+					*mem.m32 = BSWAP32(num.num32);
 					mem.m32++; num.num32++;
 					length--;
 				}
@@ -948,7 +952,7 @@ extern int lzjody_decompress(const unsigned char * const in,
 				opos += (length << 1);
 				if (opos > LZJODY_BSIZE) goto error_seq;
 				while (length > 0) {
-					*mem.m16 = num.num16;
+					*mem.m16 = BSWAP16(num.num16);
 					mem.m16++; num.num16++;
 					length--;
 				}
