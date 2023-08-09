@@ -60,7 +60,7 @@
  * algorithms to expand data and fail in some cases!
  */
 #define MIN_LZ_MATCH 3
-#define MAX_LZ_MATCH 4095
+#define MAX_LZ_MATCH LZJODY_BSIZE - 1
 #define MIN_RLE_LENGTH 3
 /* Sequence lengths are not byte counts, they are word counts! */
 #define MIN_SEQ32_LENGTH 2
@@ -172,7 +172,7 @@ static int lzjody_write_control(struct comp_data_t * const restrict data,
 		const unsigned char type,
 		const uint16_t value)
 {
-	if (value > 0x1000) goto error_value_too_large;
+	if (value > LZJODY_BSIZE) goto error_value_too_large;
 	DLOG("control: (i 0x%x, o 0x%x) t 0x%x, val 0x%x: ",
 			data->ipos, data->opos, type, value);
 	/* Extended control bytes */

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Spacing for printout
-SPC1=34; SPC2=10
+SPC1=34; SPC2=8
 
 [ ! -z "$WINDIR" ] && EXT=".exe"
 [ ! -z "$1" ] && FILE="$1"
@@ -9,33 +9,49 @@ SPC1=34; SPC2=10
 [ ! -e "$FILE" ] && echo "Bad file" && exit 1
 [ ! -x ./lzjody.static ] && make -j
 
-BEST=99999999999
+BEST=0
 FSZ="$(stat -c '%s' "$FILE")"
 [ "$FSZ" = "0" ] && echo "Zero-length file" && exit 1
 
 echo -e "Source file: '$FILE'\n"
 printf "%${SPC1}s: %${SPC2}s\n" "Source file size" "$FSZ"
-for X in "./lzjody.static$EXT -c" "lzop -9c" "gzip -9c" "bzip2 -9c" "xz -ec"
+for X in "./lzjody.static$EXT -c" "lzop -1c" "lzop -9c" "gzip -9c" "bzip2 -9c" "xz -ec"
 	do
 	P=""; printf "%${SPC1}s: " "$P$X"
+	D1=$(date +%s%N)
 	SZ="$($X < "$FILE" | wc -c)"
-	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
-	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
+	D2=$(date +%s%N)
+	T=$((D2 - D1)); T=$((T / 1000000))
+	R=$((FSZ * 1000 / T / 1024))
+	printf "%${SPC2}s KiB/sec\n" "$R"
+	[ $R -gt $BEST ] && BP="$P$X" && BEST="$R"
 
 	P="bpxfrm => "; printf "%${SPC1}s: " "$P$X"
+	D1=$(date +%s%N)
 	SZ="$(./bpxfrm$EXT f "$FILE" - | $X | wc -c)"
-	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
-	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
+	D2=$(date +%s%N)
+	T=$((D2 - D1)); T=$((T / 1000000))
+	R=$((FSZ * 1000 / T / 1024))
+	printf "%${SPC2}s KiB/sec\n" "$R"
+	[ $R -gt $BEST ] && BP="$P$X" && BEST="$R"
 
 	P="diffxfrm => "; printf "%${SPC1}s: " "$P$X"
+	D1=$(date +%s%N)
 	SZ="$(./diffxfrm$EXT -c < "$FILE" | $X | wc -c)"
-	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
-	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
+	D2=$(date +%s%N)
+	T=$((D2 - D1)); T=$((T / 1000000))
+	R=$((FSZ * 1000 / T / 1024))
+	printf "%${SPC2}s KiB/sec\n" "$R"
+	[ $R -gt $BEST ] && BP="$P$X" && BEST="$R"
 
 	P="xorxfrm => "; printf "%${SPC1}s: " "$P$X"
+	D1=$(date +%s%N)
 	SZ="$(./xorxfrm$EXT -c < "$FILE" | $X | wc -c)"
-	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
-	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
+	D2=$(date +%s%N)
+	T=$((D2 - D1)); T=$((T / 1000000))
+	R=$((FSZ * 1000 / T / 1024))
+	printf "%${SPC2}s KiB/sec\n" "$R"
+	[ $R -gt $BEST ] && BP="$P$X" && BEST="$R"
 
 #	P="bp+diff => "; printf "%${SPC1}s: " "$P$X"
 #	SZ="$(./bpxfrm$EXT f "$FILE" - | ./diffxfrm$EXT -c - | $X | wc -c)"
@@ -62,7 +78,7 @@ for X in "./lzjody.static$EXT -c" "lzop -9c" "gzip -9c" "bzip2 -9c" "xz -ec"
 #	printf "%${SPC2}s%4s%%\n" "$SZ" "$(expr $SZ \* 100 / $FSZ)"
 #	[ $SZ -lt $BEST ] && BP="$P$X" && BEST="$SZ"
 
-	echo "Best so far: $BP with ratio of $(expr $BEST \* 100 / $FSZ)%"
+	echo "Best so far: $BP"
 done
 
-echo -e "\nBest algorithm: $BP with ratio of $(expr $BEST \* 100 / $FSZ)%"
+echo -e "\nBest algorithm: $BP with speed of $BEST KiB/sec"
