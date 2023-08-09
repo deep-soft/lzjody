@@ -179,6 +179,15 @@ int main(int argc, char **argv)
 	files.in = stdin;
 	files.out = stdout;
 
+	if (!strncmp(argv[1], "-h", 2) || !strncmp(argv[1], "-v", 2)) {
+		printf("lzjody utility %s (%s), using lzjody %s (%s)\n",
+				LZJODY_UTIL_VER, LZJODY_UTIL_VERDATE,
+				LZJODY_VER, LZJODY_VERDATE);
+		printf("usage: lzjody -c|-d\n");
+		printf(" -c  compress data from stdin to stdout\n");
+		printf(" -d  decompress compressed data from stdin to stdout\n");
+		exit(EXIT_SUCCESS);
+	}
 	if (!strncmp(argv[1], "-c", 2)) {
 #ifndef THREADED
 		/* Non-threaded compression */
