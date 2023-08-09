@@ -12,15 +12,18 @@
 extern "C" {
 #endif
 
-#define LZJODY_VER "0.3"
-#define LZJODY_VERDATE "2023-08-06"
+#define LZJODY_VER "0.4"
+#define LZJODY_VERDATE "2023-08-09"
 
 /* Maximum amount of data the algorithm can process at a time */
 #define LZJODY_BSIZE 4096
 
 /* Options for the compressor */
-#define O_FAST_LZ 0x01	/* Stop at first LZ match (faster but not recommended) */
-#define O_NOPREFIX 0x40	/* Don't prefix lzjody_compress() data with the compressed length */
+#define O_FAST_LZ   0x01	/* Stop at first LZ match (faster but not recommended) */
+#define O_NO_LZ     0x02	/* Don't use the LZ compressor */
+#define O_NO_SEQ    0x04	/* Don't use the sequence compressors */
+#define O_NO_RLE    0x08	/* Don't use the RLE compressor */
+#define O_NOPREFIX  0x40	/* Don't prefix lzjody_compress() data with the compressed length */
 #define O_REALFLUSH 0x80	/* Make lzjody_flush_literals() flush without question */
 
 /* Decompressor options (some copied from data block header) */

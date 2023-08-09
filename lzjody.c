@@ -111,23 +111,29 @@ static int compress_scan(struct comp_data_t * const restrict data,
 		 * just add the byte to the literal stream */
 		DLOG("[c_scan] ipos: 0x%x, opos: 0x%x\n", data->ipos, data->opos);
 
-		err = lzjody_find_rle(data);
-		if (err < 0) return err;
-		if (err > 0) continue;
+		if (!(data->options & O_NO_RLE)) {
+			err = lzjody_find_rle(data);
+			if (err < 0) return err;
+			if (err > 0) continue;
+		}
 
-		err = lzjody_find_seq8(data);
-		if (err < 0) return err;
-		if (err > 0) continue;
-		err = lzjody_find_seq16(data);
-		if (err < 0) return err;
-		if (err > 0) continue;
-		err = lzjody_find_seq32(data);
-		if (err < 0) return err;
-		if (err > 0) continue;
+		if (!(data->options & O_NO_SEQ)) {
+			err = lzjody_find_seq8(data);
+			if (err < 0) return err;
+			if (err > 0) continue;
+			err = lzjody_find_seq16(data);
+			if (err < 0) return err;
+			if (err > 0) continue;
+			err = lzjody_find_seq32(data);
+			if (err < 0) return err;
+			if (err > 0) continue;
+		}
 
-		err = lzjody_find_lz(data, idx);
-		if (err < 0) return err;
-		if (err > 0) continue;
+		if (!(data->options & O_NO_LZ)) {
+			err = lzjody_find_lz(data, idx);
+			if (err < 0) return err;
+			if (err > 0) continue;
+		}
 
 		/* Nothing compressed; add to literal bytes */
 		if (data->literals == 0) data->literal_start = data->ipos;
