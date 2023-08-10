@@ -30,10 +30,13 @@
 #endif
 
 #ifdef THREADED
-#include <pthread.h>
+ #define LZJODY_UTIL_THREADED " threaded"
+ #include <pthread.h>
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER; /* lock for change */
 pthread_cond_t thread_change;	/* pthreads change condition */
 static int thread_error;	/* nonzero if any thread fails */
+#else
+ #define LZJODY_UTIL_THREADED ""
 #endif
 
 struct files_t files;
@@ -180,9 +183,9 @@ int main(int argc, char **argv)
 	files.out = stdout;
 
 	if (!strncmp(argv[1], "-h", 2) || !strncmp(argv[1], "-v", 2)) {
-		printf("lzjody utility %s (%s), using lzjody %s (%s)\n",
+		printf("lzjody utility %s (%s)%s, using lzjody %s (%s)\n",
 				LZJODY_UTIL_VER, LZJODY_UTIL_VERDATE,
-				LZJODY_VER, LZJODY_VERDATE);
+				LZJODY_UTIL_THREADED, LZJODY_VER, LZJODY_VERDATE);
 		printf("usage: lzjody -c|-d\n");
 		printf(" -c  compress data from stdin to stdout\n");
 		printf(" -d  decompress compressed data from stdin to stdout\n");
